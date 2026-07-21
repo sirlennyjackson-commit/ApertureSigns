@@ -48,66 +48,115 @@
     inset:0;
     z-index:1;
     pointer-events:none;
-    background: linear-gradient(180deg, rgba(18, 20, 26, 0.75) 0%, rgba(18, 20, 26, 0.85) 60%, rgba(18, 20, 26, 0.95) 100%);
+    background: linear-gradient(180deg, rgba(18, 20, 26, 0.78) 0%, rgba(18, 20, 26, 0.86) 50%, rgba(18, 20, 26, 0.95) 100%);
   }
  
-  /* ---------- CONTENT ---------- */
+  /* ---------- FULL-WIDTH LAYOUT CONTAINER ---------- */
   header{
     position:relative;z-index:2;
     display:flex;align-items:center;justify-content:space-between;
-    padding:1.6rem 2.5rem;max-width:1180px;margin:0 auto;
+    padding:2.5rem 4vw;
+    width:100%;max-width:1600px;margin:0 auto;
   }
-  .logo{font-family:var(--disp);font-weight:700;font-size:1.2rem;display:flex;align-items:center;gap:0.6rem;}
-  .logo .ring-mark{width:15px;height:15px;border-radius:50%;border:2.5px solid var(--brass);position:relative;flex-shrink:0;}
-  .logo .ring-mark::after{content:'';position:absolute;inset:3.5px;border-radius:50%;background:var(--cyan);}
+  .logo{font-family:var(--disp);font-weight:700;font-size:1.35rem;display:flex;align-items:center;gap:0.7rem;}
+  .logo .ring-mark{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--brass);position:relative;flex-shrink:0;}
+  .logo .ring-mark::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--cyan);}
   .status-pill{
-    font-family:var(--mono);font-size:0.72rem;letter-spacing:0.06em;color:var(--brass);
-    background:rgba(201,166,104,0.1);padding:0.32rem 0.75rem;border-radius:99px;
+    font-family:var(--mono);font-size:0.75rem;letter-spacing:0.08em;color:var(--brass);
+    background:rgba(201,166,104,0.1);padding:0.4rem 0.95rem;border-radius:99px;
     border:1px solid rgba(201,166,104,0.3);white-space:nowrap;
   }
  
   main{
-    position:relative;z-index:2;max-width:900px;margin:0 auto;
-    padding:6vh 2.5rem 8vh;min-height:78vh;
-    display:flex;flex-direction:column;justify-content:center;
+    position:relative;z-index:2;
+    width:100%;max-width:1600px;margin:0 auto;
+    padding:3rem 4vw 6rem;
+    display:flex;flex-direction:column;gap:4.5rem;
+  }
+
+  /* Hero Section: Extended Horizontally */
+  .hero{
+    width:100%;
+    max-width:1200px;
   }
   .eyebrow{
-    font-family:var(--mono);font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;
-    color:var(--cyan);margin-bottom:1.3rem;display:flex;align-items:center;gap:0.6rem;
+    font-family:var(--mono);font-size:0.85rem;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--cyan);margin-bottom:1.5rem;display:flex;align-items:center;gap:0.6rem;
   }
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);}
   h1{
     font-family:var(--disp);font-weight:700;
-    font-size:clamp(2.3rem,5.2vw,4.4rem);
-    line-height:1.03;letter-spacing:-0.01em;margin-bottom:1.7rem;max-width:16ch;
+    font-size:clamp(2.5rem, 5vw, 5.2rem);
+    line-height:1.05;letter-spacing:-0.02em;margin-bottom:1.8rem;
   }
   h1 .accent{color:var(--brass);}
   .lede{
-    font-size:1.2rem;color:var(--ink-dim);max-width:38rem;margin-bottom:2.6rem;
+    font-size:clamp(1.15rem, 1.8vw, 1.45rem);
+    color:var(--ink-dim);max-width:65ch;line-height:1.65;
   }
   .lede strong{color:var(--ink);font-weight:600;}
- 
-  .who-row{
-    display:flex;gap:2.2rem;flex-wrap:wrap;
-    padding-top:2rem;border-top:1px solid rgba(255,255,255,0.15);
+
+  /* Metric Highlights Bar: Wide Spacing */
+  .spec-bar{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap:2rem;
+    padding:2.2rem 3rem;background:rgba(18, 20, 26, 0.55);
+    border:1px solid rgba(255,255,255,0.1);border-radius:10px;
+    backdrop-filter:blur(10px);
   }
-  .who-item{max-width:15rem;}
-  .who-item .k{font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--brass);margin-bottom:0.4rem;display:block;}
-  .who-item p{color:var(--ink-dim);font-size:0.92rem;}
- 
+  .spec-item .num{
+    font-family:var(--disp);font-size:2.2rem;font-weight:700;color:var(--cyan);line-height:1.1;margin-bottom:0.3rem;
+  }
+  .spec-item .label{
+    font-family:var(--mono);font-size:0.75rem;letter-spacing:0.08em;color:var(--ink-faint);text-transform:uppercase;
+  }
+
+  /* Core Architecture: 4 Wide Columns */
+  .section-title{
+    font-family:var(--mono);font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--brass);margin-bottom:1.8rem;display:block;
+  }
+  .grid-4{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap:1.5rem;
+    width:100%;
+  }
+  .card{
+    background:rgba(255,255,255,0.025);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px;padding:2.2rem;
+    backdrop-filter:blur(10px);
+    transition:border-color 0.2s, background 0.2s;
+  }
+  .card:hover{
+    border-color:rgba(201,166,104,0.35);
+    background:rgba(255,255,255,0.04);
+  }
+  .card h3{
+    font-family:var(--disp);font-size:1.2rem;font-weight:600;color:var(--ink);
+    margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;
+  }
+  .card p{
+    color:var(--ink-dim);font-size:0.95rem;line-height:1.65;
+  }
+
+  /* Footer */
   footer{
     position:relative;z-index:2;
-    border-top:1px solid rgba(255,255,255,0.15);
-    max-width:1180px;margin:0 auto;padding:1.6rem 2.5rem;
-    display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;
-    font-family:var(--mono);font-size:0.78rem;color:var(--ink-faint);
+    border-top:1px solid rgba(255,255,255,0.12);
+    width:100%;max-width:1600px;margin:0 auto;padding:2.5rem 4vw;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;
+    font-family:var(--mono);font-size:0.82rem;color:var(--ink-faint);
   }
   footer a{color:var(--cyan);text-decoration:none;}
  
-  @media (max-width:640px){
-    header{padding:1.4rem 1.4rem;}
-    main{padding:5vh 1.4rem 6vh;}
-    footer{padding:1.4rem;flex-direction:column;}
+  @media (max-width:768px){
+    header{padding:1.5rem 5vw;}
+    main{padding:2rem 5vw 4rem;gap:3rem;}
+    .spec-bar{padding:1.5rem;}
+    footer{padding:1.5rem 5vw;flex-direction:column;align-items:flex-start;}
   }
 </style>
 </head>
@@ -122,24 +171,55 @@
 </header>
  
 <main>
-  <div class="eyebrow"><span class="dot"></span>Nairobi, Kenya &middot; Assistive Edge AI</div>
-  <h1>Bidirectional <span class="accent">African Sign Language</span> Translation, on the Edge</h1>
-  <p class="lede">Aperture Signs is pioneering low-latency, assistive AI technology designed for <strong>seamless, bidirectional communication</strong> between deaf individuals and non-signers in low-resource environments — no cloud dependency, no compromise on privacy.</p>
- 
-  <div class="who-row">
-    <div class="who-item">
-      <span class="k">Gesture &rarr; Speech</span>
-      <p>Wearable sensing captures hand and facial motion, converting it instantly into natural spoken language.</p>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="eyebrow"><span class="dot"></span>Nairobi, Kenya &middot; Assistive Edge AI</div>
+    <h1>Bidirectional <span class="accent">African Sign Language</span> Translation, on the Edge</h1>
+    <p class="lede">Aperture Signs is pioneering low-latency, privacy-first assistive AI technology designed for <strong>seamless communication</strong> between deaf individuals and non-signers in resource-constrained environments — operating locally without cloud dependency.</p>
+  </section>
+
+  <!-- Spec Metrics Bar: Dynamic Horizontal Grid -->
+  <section class="spec-bar">
+    <div class="spec-item">
+      <div class="num">&lt;100ms</div>
+      <div class="label">Target Edge Latency</div>
     </div>
-    <div class="who-item">
-      <span class="k">Speech &rarr; Avatar</span>
-      <p>Spoken language is rendered back as an expressive, localized signing avatar for immediate feedback.</p>
+    <div class="spec-item">
+      <div class="num">0 Cloud</div>
+      <div class="label">On-Device Processing</div>
     </div>
-    <div class="who-item">
-      <span class="k">Built for Africa</span>
-      <p>Kenyan Sign Language first, with a model architecture designed to extend across regional languages.</p>
+    <div class="spec-item">
+      <div class="num">KSL First</div>
+      <div class="label">Kenyan Sign Language Engine</div>
     </div>
-  </div>
+    <div class="spec-item">
+      <div class="num">Edge AI</div>
+      <div class="label">Embedded Neural Inference</div>
+    </div>
+  </section>
+
+  <!-- Core Pipeline Architecture: 4 Wide Cards -->
+  <section>
+    <span class="section-title">// System Architecture & Capabilities</span>
+    <div class="grid-4">
+      <div class="card">
+        <h3>Gesture &rarr; Speech</h3>
+        <p>Distributed neckband and wearable sensing capture spatial hand trajectories and facial markers, translating gestures into natural spoken audio in real time.</p>
+      </div>
+      <div class="card">
+        <h3>Speech &rarr; Avatar</h3>
+        <p>Incoming speech signals are processed on-chip to render expressive, localized 3D signing avatars for clear reciprocal conversation.</p>
+      </div>
+      <div class="card">
+        <h3>Privacy & Resilience</h3>
+        <p>Built explicitly for low-resource environments. Local inference ensures complete user data privacy and zero dependence on continuous internet coverage.</p>
+      </div>
+      <div class="card">
+        <h3>Multimodal Fusion</h3>
+        <p>Combining computer vision, inertial spatial tracking, and NPU acceleration to deliver accurate recognition under dynamic real-world lighting.</p>
+      </div>
+    </div>
+  </section>
 </main>
  
 <footer>
