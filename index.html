@@ -30,188 +30,202 @@
     position:relative;
     overflow-x:hidden;
   }
-
-  /* ---------- FULL-BLEED BACKGROUND ---------- */
+ 
+  /* ---------- FULL-BLEED IMGUR BACKGROUND ---------- */
   .bg-layer{
-    position:fixed;inset:0;z-index:0;
-    background-image:url('https://i.imgur.com/V9uB1mT.jpg');
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-  }
-  .bg-overlay{
-    position:fixed;inset:0;z-index:1;pointer-events:none;
-    background:linear-gradient(180deg, rgba(18,20,26,0.72) 0%, rgba(18,20,26,0.82) 45%, rgba(18,20,26,0.94) 100%);
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background-image: url('https://i.imgur.com/V9uB1mT.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
-  /* ---------- LAYOUT SHELL ---------- */
+  /* Dark Overlay */
+  .bg-overlay{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background: linear-gradient(180deg, rgba(18, 20, 26, 0.78) 0%, rgba(18, 20, 26, 0.86) 50%, rgba(18, 20, 26, 0.95) 100%);
+  }
+ 
+  /* ---------- FULL-WIDTH LAYOUT CONTAINER ---------- */
   header{
     position:relative;z-index:2;
     display:flex;align-items:center;justify-content:space-between;
-    padding:2.4rem 5vw;width:100%;
+    padding:2.5rem 4vw;
+    width:100%;max-width:1600px;margin:0 auto;
   }
-  .logo{font-family:var(--disp);font-weight:700;font-size:1.3rem;display:flex;align-items:center;gap:0.7rem;}
-  .logo .ring-mark{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--brass);position:relative;flex-shrink:0;}
+  .logo{font-family:var(--disp);font-weight:700;font-size:1.35rem;display:flex;align-items:center;gap:0.7rem;}
+  .logo .ring-mark{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--brass);position:relative;flex-shrink:0;}
   .logo .ring-mark::after{content:'';position:absolute;inset:4px;border-radius:50%;background:var(--cyan);}
   .status-pill{
-    font-family:var(--mono);font-size:0.74rem;letter-spacing:0.08em;color:var(--brass);
+    font-family:var(--mono);font-size:0.75rem;letter-spacing:0.08em;color:var(--brass);
     background:rgba(201,166,104,0.1);padding:0.4rem 0.95rem;border-radius:99px;
     border:1px solid rgba(201,166,104,0.3);white-space:nowrap;
   }
-
+ 
   main{
-    position:relative;z-index:2;width:100%;
-    padding:2rem 5vw 6rem;
+    position:relative;z-index:2;
+    width:100%;max-width:1600px;margin:0 auto;
+    padding:3rem 4vw 6rem;
     display:flex;flex-direction:column;gap:4.5rem;
   }
 
-  /* ---------- HERO: asymmetric, edge to edge ---------- */
+  /* Hero Section */
   .hero{
-    display:grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap:4vw;
-    align-items:end;
     width:100%;
+    max-width:1200px;
   }
-  .hero-copy{max-width:44rem;}
   .eyebrow{
     font-family:var(--mono);font-size:0.85rem;letter-spacing:0.14em;text-transform:uppercase;
-    color:var(--cyan);margin-bottom:1.4rem;display:flex;align-items:center;gap:0.6rem;
+    color:var(--cyan);margin-bottom:1.5rem;display:flex;align-items:center;gap:0.6rem;
   }
   .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);}
   h1{
     font-family:var(--disp);font-weight:700;
-    font-size:clamp(2.4rem, 5vw, 4.6rem);
-    line-height:1.03;letter-spacing:-0.02em;margin-bottom:1.7rem;
+    font-size:clamp(2.5rem, 5vw, 5.2rem);
+    line-height:1.05;letter-spacing:-0.02em;margin-bottom:1.8rem;
   }
   h1 .accent{color:var(--brass);}
   .lede{
-    font-size:clamp(1.05rem, 1.4vw, 1.25rem);
-    color:var(--ink-dim);max-width:34rem;line-height:1.65;
+    font-size:clamp(1.15rem, 1.8vw, 1.45rem);
+    color:var(--ink-dim);max-width:65ch;line-height:1.65;
   }
   .lede strong{color:var(--ink);font-weight:600;}
 
-  /* right-side signature panel — echoes the diagonal light rays in the photo */
-  .signal-panel{
-    position:relative;
-    border-left:1px solid rgba(201,166,104,0.35);
-    padding-left:2.2rem;
-    align-self:end;
-    display:flex;flex-direction:column;gap:1.6rem;
+  /* Metric Highlights Bar */
+  .spec-bar{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap:2rem;
+    padding:2.2rem 3rem;background:rgba(18, 20, 26, 0.55);
+    border:1px solid rgba(255,255,255,0.1);border-radius:10px;
+    backdrop-filter:blur(10px);
   }
-  .signal-panel::before{
-    content:'';position:absolute;left:-1px;top:0;bottom:0;width:1px;
-    background:linear-gradient(180deg, var(--brass), transparent 70%);
+  .spec-item .num{
+    font-family:var(--disp);font-size:2.2rem;font-weight:700;color:var(--cyan);line-height:1.1;margin-bottom:0.3rem;
   }
-  .signal-row{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;}
-  .signal-row .val{font-family:var(--disp);font-weight:700;font-size:1.5rem;color:var(--cyan);white-space:nowrap;}
-  .signal-row .lbl{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-faint);text-align:right;}
+  .spec-item .label{
+    font-family:var(--mono);font-size:0.75rem;letter-spacing:0.08em;color:var(--ink-faint);text-transform:uppercase;
+  }
 
-  /* ---------- ARCHITECTURE: spread full width ---------- */
+  /* Core Architecture */
   .section-title{
     font-family:var(--mono);font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;
-    color:var(--brass);margin-bottom:1.8rem;display:flex;align-items:center;gap:1rem;
+    color:var(--brass);margin-bottom:1.8rem;display:block;
   }
-  .section-title::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.12);}
   .grid-4{
     display:grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap:1.4rem;width:100%;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap:1.5rem;
+    width:100%;
   }
   .card{
-    background:rgba(255,255,255,0.03);
-    border:1px solid rgba(255,255,255,0.09);
-    border-radius:10px;padding:2rem 1.7rem;
+    background:rgba(255,255,255,0.025);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px;padding:2.2rem;
     backdrop-filter:blur(10px);
-    transition:border-color 0.2s, background 0.2s, transform .2s;
+    transition:border-color 0.2s, background 0.2s;
   }
   .card:hover{
-    border-color:rgba(201,166,104,0.4);
-    background:rgba(255,255,255,0.05);
-    transform:translateY(-3px);
+    border-color:rgba(201,166,104,0.35);
+    background:rgba(255,255,255,0.04);
   }
   .card h3{
-    font-family:var(--disp);font-size:1.12rem;font-weight:600;color:var(--ink);
-    margin-bottom:0.7rem;
+    font-family:var(--disp);font-size:1.2rem;font-weight:600;color:var(--ink);
+    margin-bottom:0.8rem;display:flex;align-items:center;gap:0.5rem;
   }
-  .card p{color:var(--ink-dim);font-size:0.92rem;line-height:1.6;}
-  .card.brass h3{color:var(--brass);}
-  .card.cyan h3{color:var(--cyan);}
+  .card p{
+    color:var(--ink-dim);font-size:0.95rem;line-height:1.65;
+  }
 
+  /* Footer */
   footer{
     position:relative;z-index:2;
     border-top:1px solid rgba(255,255,255,0.12);
-    width:100%;padding:2.2rem 5vw;
+    width:100%;max-width:1600px;margin:0 auto;padding:2.5rem 4vw;
     display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;
     font-family:var(--mono);font-size:0.82rem;color:var(--ink-faint);
   }
   footer a{color:var(--cyan);text-decoration:none;}
-
-  @media (max-width:960px){
-    .hero{grid-template-columns:1fr;}
-    .signal-panel{border-left:none;padding-left:0;border-top:1px solid rgba(201,166,104,0.35);padding-top:1.6rem;flex-direction:row;flex-wrap:wrap;gap:1.8rem 2.5rem;}
-    .signal-panel::before{display:none;}
-    .grid-4{grid-template-columns:repeat(2,1fr);}
-  }
-  @media (max-width:600px){
-    header{padding:1.6rem 6vw;}
-    main{padding:1.5rem 6vw 4rem;gap:3rem;}
-    .grid-4{grid-template-columns:1fr;}
-    footer{padding:1.6rem 6vw;flex-direction:column;align-items:flex-start;}
+ 
+  @media (max-width:768px){
+    header{padding:1.5rem 5vw;}
+    main{padding:2rem 5vw 4rem;gap:3rem;}
+    .spec-bar{padding:1.5rem;}
+    footer{padding:1.5rem 5vw;flex-direction:column;align-items:flex-start;}
   }
 </style>
 </head>
 <body>
-
+ 
 <div class="bg-layer"></div>
 <div class="bg-overlay"></div>
-
+ 
 <header>
   <div class="logo"><span class="ring-mark"></span>Aperture Signs</div>
   <span class="status-pill">PRE-ALPHA / IN DEVELOPMENT</span>
 </header>
-
+ 
 <main>
+  <!-- Hero Section -->
   <section class="hero">
-    <div class="hero-copy">
-      <div class="eyebrow"><span class="dot"></span>Nairobi, Kenya &middot; Assistive Edge AI</div>
-      <h1>Bidirectional <span class="accent">African Sign Language</span> Translation, on the Edge</h1>
-      <p class="lede">Aperture Signs is pioneering low-latency, privacy-first assistive AI designed for <strong>seamless communication</strong> between deaf individuals and non-signers in resource-constrained environments — operating locally, without cloud dependency.</p>
+    <div class="eyebrow"><span class="dot"></span>NAIROBI, KENYA &middot; ASSISTIVE EDGE AI</div>
+    <h1>Bidirectional <span class="accent">African Sign Language</span> Translation, on the Edge</h1>
+    <p class="lede">Aperture Signs is pioneering low-latency, privacy-first assistive AI technology designed for <strong>seamless communication</strong> between deaf individuals and non-signers in resource-constrained environments — operating locally without cloud dependency.</p>
+  </section>
+
+  <!-- Spec Metrics Bar -->
+  <section class="spec-bar">
+    <div class="spec-item">
+      <div class="num">&lt;100ms</div>
+      <div class="label">TARGET EDGE LATENCY</div>
     </div>
-    <div class="signal-panel">
-      <div class="signal-row"><span class="val">&lt;100ms</span><span class="lbl">Target edge latency</span></div>
-      <div class="signal-row"><span class="val">0 Cloud</span><span class="lbl">On-device processing</span></div>
-      <div class="signal-row"><span class="val">KSL</span><span class="lbl">First supported language</span></div>
+    <div class="spec-item">
+      <div class="num">0 Cloud</div>
+      <div class="label">ON-DEVICE PROCESSING</div>
+    </div>
+    <div class="spec-item">
+      <div class="num">KSL First</div>
+      <div class="label">KENYAN SIGN LANGUAGE ENGINE</div>
+    </div>
+    <div class="spec-item">
+      <div class="num">Edge AI</div>
+      <div class="label">EMBEDDED NEURAL INFERENCE</div>
     </div>
   </section>
 
+  <!-- Core Pipeline Architecture -->
   <section>
-    <div class="section-title">System Architecture &amp; Capabilities</div>
+    <span class="section-title">// SYSTEM ARCHITECTURE &amp; CAPABILITIES</span>
     <div class="grid-4">
-      <div class="card cyan">
+      <div class="card">
         <h3>Gesture &rarr; Speech</h3>
         <p>Distributed neckband and wearable sensing capture spatial hand trajectories and facial markers, translating gestures into natural spoken audio in real time.</p>
       </div>
-      <div class="card brass">
+      <div class="card">
         <h3>Speech &rarr; Avatar</h3>
-        <p>Incoming speech is processed on-chip to render an expressive, localized 3D signing avatar for clear reciprocal conversation.</p>
+        <p>Incoming speech signals are processed on-chip to render expressive, localized 3D signing avatars for clear reciprocal conversation.</p>
       </div>
       <div class="card">
         <h3>Privacy &amp; Resilience</h3>
-        <p>Built for low-resource environments. Local inference means complete data privacy and zero dependence on continuous internet coverage.</p>
+        <p>Built explicitly for low-resource environments. Local inference ensures complete user data privacy and zero dependence on continuous internet coverage.</p>
       </div>
       <div class="card">
         <h3>Multimodal Fusion</h3>
-        <p>Computer vision, inertial spatial tracking, and NPU acceleration combine to deliver accurate recognition under dynamic real-world lighting.</p>
+        <p>Combining computer vision, inertial spatial tracking, and NPU acceleration to deliver accurate recognition under dynamic real-world lighting.</p>
       </div>
     </div>
   </section>
-</main>
-
+</main> 
+ 
 <footer>
   <span>&copy; 2026 Aperture Signs. All rights reserved.</span>
   <span><a href="mailto:hello@aperturesigns.ai">hello@aperturesigns.ai</a></span>
 </footer>
-
+ 
 </body>
 </html>
