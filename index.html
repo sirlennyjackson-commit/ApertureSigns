@@ -1,91 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aperture Signs | Real-Time Bidirectional Sign Language AI</title>
-    <style>
-        :root {
-            --bg-color: #14161c;
-            --card-bg: #1c1f26;
-            --accent-color: #c9a86a;
-            --accent-cyan: #4fd1c5;
-            --text-main: #f5f4f0;
-            --text-muted: #a3a6ad;
-            --border-color: #2b2e36;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body {
-            background-color: var(--bg-color);
-            background-image:
-                radial-gradient(circle at 15% 10%, rgba(201, 168, 106, 0.08), transparent 40%),
-                radial-gradient(circle at 85% 90%, rgba(79, 209, 197, 0.07), transparent 45%);
-            color: var(--text-main);
-            line-height: 1.6;
-            padding: 0 1.5rem;
-        }
-        header { max-width: 1100px; margin: 0 auto; padding: 2rem 0; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.5rem; font-weight: 700; color: var(--accent-color); letter-spacing: -0.5px; }
-        .tag { background: rgba(201, 168, 106, 0.12); color: var(--accent-color); padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.85rem; font-weight: 600; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aperture Signs | Bidirectional African Sign Language AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12141a;
+    --ink:#f3f0e8;
+    --ink-dim:#c7cad1;
+    --ink-faint:#8b8f99;
+    --brass:#c9a668;
+    --cyan:#57d6cc;
+    --disp:'Space Grotesk', sans-serif;
+    --body:'IBM Plex Sans', sans-serif;
+    --mono:'IBM Plex Mono', monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    line-height:1.6;
+    min-height:100vh;
+    position:relative;
+    overflow-x:hidden;
+  }
+ 
+  /* ---------- FULL-BLEED IMGUR BACKGROUND ---------- */
+  .bg-layer{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background-image: url('https://i.imgur.com/1J0SnSA.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
 
-        .hero { max-width: 800px; margin: 4rem auto 6rem auto; text-align: center; }
-        .hero h1 { font-size: 3rem; font-weight: 800; line-height: 1.2; margin-bottom: 1.5rem; }
-        .hero p { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 2rem; }
-
-        .grid { max-width: 1100px; margin: 0 auto 6rem auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-        .card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; }
-        .card h3 { font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--accent-color); }
-        .card p { color: var(--text-muted); font-size: 0.95rem; }
-
-        .arch { max-width: 1100px; margin: 0 auto 6rem auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 2.5rem; }
-        .arch h2 { margin-bottom: 1rem; }
-        .arch ul { list-style: none; }
-        .arch li { padding: 0.5rem 0; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
-        .arch li:last-child { border-bottom: none; }
-        .arch strong { color: var(--text-main); }
-
-        footer { max-width: 1100px; margin: 0 auto; padding: 2rem 0; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-muted); font-size: 0.85rem; }
-    </style>
+  /* Dark Overlay to Keep Text Perfectly Readable */
+  .bg-overlay{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background: linear-gradient(180deg, rgba(18, 20, 26, 0.75) 0%, rgba(18, 20, 26, 0.85) 60%, rgba(18, 20, 26, 0.95) 100%);
+  }
+ 
+  /* ---------- CONTENT ---------- */
+  header{
+    position:relative;z-index:2;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:1.6rem 2.5rem;max-width:1180px;margin:0 auto;
+  }
+  .logo{font-family:var(--disp);font-weight:700;font-size:1.2rem;display:flex;align-items:center;gap:0.6rem;}
+  .logo .ring-mark{width:15px;height:15px;border-radius:50%;border:2.5px solid var(--brass);position:relative;flex-shrink:0;}
+  .logo .ring-mark::after{content:'';position:absolute;inset:3.5px;border-radius:50%;background:var(--cyan);}
+  .status-pill{
+    font-family:var(--mono);font-size:0.72rem;letter-spacing:0.06em;color:var(--brass);
+    background:rgba(201,166,104,0.1);padding:0.32rem 0.75rem;border-radius:99px;
+    border:1px solid rgba(201,166,104,0.3);white-space:nowrap;
+  }
+ 
+  main{
+    position:relative;z-index:2;max-width:900px;margin:0 auto;
+    padding:6vh 2.5rem 8vh;min-height:78vh;
+    display:flex;flex-direction:column;justify-content:center;
+  }
+  .eyebrow{
+    font-family:var(--mono);font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--cyan);margin-bottom:1.3rem;display:flex;align-items:center;gap:0.6rem;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+  h1{
+    font-family:var(--disp);font-weight:700;
+    font-size:clamp(2.3rem,5.2vw,4.4rem);
+    line-height:1.03;letter-spacing:-0.01em;margin-bottom:1.7rem;max-width:16ch;
+  }
+  h1 .accent{color:var(--brass);}
+  .lede{
+    font-size:1.2rem;color:var(--ink-dim);max-width:38rem;margin-bottom:2.6rem;
+  }
+  .lede strong{color:var(--ink);font-weight:600;}
+ 
+  .who-row{
+    display:flex;gap:2.2rem;flex-wrap:wrap;margin-bottom:3rem;
+    padding-top:2rem;border-top:1px solid rgba(255,255,255,0.15);
+  }
+  .who-item{max-width:15rem;}
+  .who-item .k{font-family:var(--mono);font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--brass);margin-bottom:0.4rem;display:block;}
+  .who-item p{color:var(--ink-dim);font-size:0.92rem;}
+ 
+  .cta-row{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:0.94rem;
+    padding:0.9rem 1.6rem;border-radius:6px;text-decoration:none;
+    display:inline-flex;align-items:center;gap:0.5rem;transition:transform .15s, background .15s;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn-primary{background:var(--brass);color:#14161b;}
+  .btn-primary:hover{background:#dab97c;}
+  .btn-ghost{background:rgba(18, 20, 26, 0.4);color:var(--ink);border:1px solid rgba(255,255,255,0.25);}
+  .btn-ghost:hover{border-color:var(--ink-dim);background:rgba(18, 20, 26, 0.6);}
+ 
+  footer{
+    position:relative;z-index:2;
+    border-top:1px solid rgba(255,255,255,0.15);
+    max-width:1180px;margin:0 auto;padding:1.6rem 2.5rem;
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;
+    font-family:var(--mono);font-size:0.78rem;color:var(--ink-faint);
+  }
+  footer a{color:var(--cyan);text-decoration:none;}
+ 
+  @media (max-width:640px){
+    header{padding:1.4rem 1.4rem;}
+    main{padding:5vh 1.4rem 6vh;}
+    footer{padding:1.4rem;flex-direction:column;}
+  }
+</style>
 </head>
 <body>
-
-    <header>
-        <div class="logo">Aperture Signs</div>
-        <div class="tag">Pre-Alpha Prototype</div>
-    </header>
-
-    <section class="hero">
-        <h1>Bridging the Communication Gap with Smart Assistive AI</h1>
-        <p>A software-driven hardware architecture delivering real-time, bidirectional sign language translation on the edge.</p>
-    </section>
-
-    <section class="grid">
-        <div class="card">
-            <h3>Wearable Distributed Hardware</h3>
-            <p>Utilizing a lightweight neckband and smart glasses form-factor for hands-free real-time capture and low-latency feedback.</p>
-        </div>
-        <div class="card">
-            <h3 style="color: var(--accent-cyan);">Edge Computer Vision</h3>
-            <p>Processing hand gestures, facial expressions, and spatial pose metrics directly on localized neural hardware without heavy cloud dependency.</p>
-        </div>
-        <div class="card">
-            <h3>Bidirectional Translation</h3>
-            <p>Seamlessly converting gestural input into natural spoken language while rendering speech back into localized expressive signing avatars.</p>
-        </div>
-    </section>
-
-    <section class="arch">
-        <h2>Technical Architecture & Cloud Pipeline</h2>
-        <ul>
-            <li><strong>Model Training:</strong> Azure Machine Learning Studio & AWS SageMaker for custom lightweight vision models.</li>
-            <li><strong>Storage & Datasets:</strong> Secure cloud video bucket storage for low-resource sign language annotations.</li>
-            <li><strong>Speech Integration:</strong> Multi-lingual speech-to-text and natural voice synthesis engines.</li>
-        </ul>
-    </section>
-
-    <footer>
-        <p>&copy; 2026 Aperture Signs. All rights reserved. | Contact: hello@aperturesigns.ai</p>
-    </footer>
-
+ 
+<div class="bg-layer"></div>
+<div class="bg-overlay"></div>
+ 
+<header>
+  <div class="logo"><span class="ring-mark"></span>Aperture Signs</div>
+  <span class="status-pill">PRE-ALPHA / IN DEVELOPMENT</span>
+</header>
+ 
+<main>
+  <div class="eyebrow"><span class="dot"></span>Nairobi, Kenya &middot; Assistive Edge AI</div>
+  <h1>Bidirectional <span class="accent">African Sign Language</span> Translation, on the Edge</h1>
+  <p class="lede">Aperture Signs is pioneering low-latency, assistive AI technology designed for <strong>seamless, bidirectional communication</strong> between deaf individuals and non-signers in low-resource environments — no cloud dependency, no compromise on privacy.</p>
+ 
+  <div class="who-row">
+    <div class="who-item">
+      <span class="k">Gesture &rarr; Speech</span>
+      <p>Wearable sensing captures hand and facial motion, converting it instantly into natural spoken language.</p>
+    </div>
+    <div class="who-item">
+      <span class="k">Speech &rarr; Avatar</span>
+      <p>Spoken language is rendered back as an expressive, localized signing avatar for immediate feedback.</p>
+    </div>
+    <div class="who-item">
+      <span class="k">Built for Africa</span>
+      <p>Kenyan Sign Language first, with a model architecture designed to extend across regional languages.</p>
+    </div>
+  </div>
+ 
+  <div class="cta-row">
+    <a class="btn btn-primary" href="mailto:hello@aperturesigns.ai?subject=Early%20Access%20Request">Request Early Access</a>
+    <a class="btn btn-ghost" href="mailto:hello@aperturesigns.ai?subject=Engineering%20Inquiry">Contact Engineering</a>
+  </div>
+</main>
+ 
+<footer>
+  <span>&copy; 2026 Aperture Signs. All rights reserved.</span>
+  <span><a href="mailto:hello@aperturesigns.ai">hello@aperturesigns.ai</a></span>
+</footer>
+ 
 </body>
 </html>
