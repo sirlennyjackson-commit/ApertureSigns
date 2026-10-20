@@ -1,0 +1,12 @@
+{
+  "_comment": "PLACEHOLDER seed lexicon: English word -> sign gloss. Gloss names are conventional English labels, not validated KSL. Replace/extend with entries reviewed by Deaf KSL signers (e.g. via KNAD).",
+  "hello": "HELLO", "hi": "HELLO", "goodbye": "GOODBYE", "bye": "GOODBYE",
+  "thank you": "THANK-YOU", "thank": "THANK-YOU", "thanks": "THANK-YOU", "please": "PLEASE", "sorry": "SORRY",
+  "yes": "YES", "no": "NO", "help": "HELP", "need": "NEED", "want": "WANT",
+  "i": "ME", "me": "ME", "my": "MY", "you": "YOU", "your": "YOUR",
+  "name": "NAME", "friend": "FRIEND", "love": "LOVE", "good": "GOOD",
+  "good morning": "GOOD-MORNING", "good night": "GOOD-NIGHT", "morning": "MORNING", "night": "NIGHT", "water": "WATER", "food": "FOOD",
+  "eat": "EAT", "drink": "DRINK", "home": "HOME", "school": "SCHOOL",
+  "doctor": "DOCTOR", "hospital": "HOSPITAL", "what": "WHAT", "where": "WHERE",
+  "when": "WHEN", "who": "WHO", "how": "HOW", "why": "WHY"
+}

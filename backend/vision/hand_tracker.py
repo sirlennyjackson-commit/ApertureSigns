@@ -1,847 +1,212 @@
-import cv2
-import mediapipe as mp
-import numpy as np
+"""Desktop HUD: live camera, skeleton, and recognised signs.
+
+    python -m backend.vision.hand_tracker [--camera 0] [--model models/signs.npz]
+
+Keys:  q quit   r clear transcript / reset recogniser
+"""
+from __future__ import annotations
+
+import argparse
 import time
-from collections import deque
-from sign_recognizer import SignRecognizer
-
-
-class ApertureTracker:
-    def __init__(self):
-        self.mp_holistic = mp.solutions.holistic
-        self.mp_face_mesh = mp.solutions.face_mesh
-
-        self.history = deque(maxlen=60)
-        self.smoothed = {
-            "left_hand": [],
-            "right_hand": [],
-            "pose": [],
-            "face": [],
-        }
-        self.smoothing_alpha = 0.35
-
-        self.holistic = self.mp_holistic.Holistic(
-            static_image_mode=False,
-            model_complexity=1,
-            smooth_landmarks=True,
-            refine_face_landmarks=True,
-            enable_segmentation=False,
-            min_detection_confidence=0.35,
-            min_tracking_confidence=0.30,
-        )
-
-    def process(self, frame):
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.holistic.process(rgb)
-
-        data = {
-            "face": [],
-            "pose": [],
-            "left_hand": [],
-            "right_hand": [],
-        }
-
-        if results.face_landmarks:
-            data["face"] = [
-                {
-                    "id": i,
-                    "x": lm.x,
-                    "y": lm.y,
-                    "z": lm.z,
-                }
-                for i, lm in enumerate(results.face_landmarks.landmark)
-            ]
-
-        if results.pose_landmarks:
-            data["pose"] = [
-                {
-                    "id": i,
-                    "x": lm.x,
-                    "y": lm.y,
-                    "z": lm.z,
-                    "visibility": lm.visibility,
-                }
-                for i, lm in enumerate(results.pose_landmarks.landmark)
-            ]
-
-        if results.left_hand_landmarks:
-            data["left_hand"] = [
-                {
-                    "id": i,
-                    "x": lm.x,
-                    "y": lm.y,
-                    "z": lm.z,
-                }
-                for i, lm in enumerate(
-                    results.left_hand_landmarks.landmark
-                )
-            ]
-
-        if results.right_hand_landmarks:
-            data["right_hand"] = [
-                {
-                    "id": i,
-                    "x": lm.x,
-                    "y": lm.y,
-                    "z": lm.z,
-                }
-                for i, lm in enumerate(
-                    results.right_hand_landmarks.landmark
-                )
-            ]
-
-        # Temporal landmark smoothing.
-        # Keeps fast hand movement responsive while reducing jitter.
-        for key in self.smoothed:
-            current = data[key]
-            previous = self.smoothed[key]
-
-            if not current:
-                continue
-
-            if not previous or len(previous) != len(current):
-                self.smoothed[key] = [dict(p) for p in current]
-                continue
-
-            alpha = self.smoothing_alpha
-            filtered = []
-
-            for cur, old in zip(current, previous):
-                item = dict(cur)
-
-                item["x"] = old["x"] + alpha * (cur["x"] - old["x"])
-                item["y"] = old["y"] + alpha * (cur["y"] - old["y"])
-                item["z"] = old["z"] + alpha * (cur["z"] - old["z"])
-
-                if "visibility" in cur:
-                    item["visibility"] = cur["visibility"]
-
-                filtered.append(item)
-
-            self.smoothed[key] = filtered
-            data[key] = filtered
-
-        self.history.append(data)
-
-        return data, results
-
-
-HAND_CONNECTIONS = [
-    (0, 1), (1, 2), (2, 3), (3, 4),
-    (0, 5), (5, 6), (6, 7), (7, 8),
-    (5, 9), (9, 10), (10, 11), (11, 12),
-    (9, 13), (13, 14), (14, 15), (15, 16),
-    (13, 17), (17, 18), (18, 19), (19, 20),
-    (0, 17),
-]
-
-POSE_CONNECTIONS = [
-    (11, 12),
-    (11, 13), (13, 15),
-    (12, 14), (14, 16),
-    (11, 23), (12, 24),
-    (23, 24),
-    (23, 25), (25, 27),
-    (24, 26), (26, 28),
-]
-
-
-def point(points, index, width, height):
-    if index >= len(points):
-        return None
-
-    x = int(np.clip(points[index]["x"], 0, 1) * width)
-    y = int(np.clip(points[index]["y"], 0, 1) * height)
-
-    return x, y
-
-
-def draw_connections(canvas, points, connections, width, height):
-    for a, b in connections:
-        p1 = point(points, a, width, height)
-        p2 = point(points, b, width, height)
-
-        if p1 and p2:
-            cv2.line(
-                canvas,
-                p1,
-                p2,
-                (95, 180, 245),
-                2,
-                cv2.LINE_AA,
-            )
-
-
-def draw_points(canvas, points, width, height, radius=3):
-    for i in range(len(points)):
-        p = point(points, i, width, height)
-
-        if p:
-            cv2.circle(
-                canvas,
-                p,
-                radius,
-                (130, 220, 255),
-                -1,
-                cv2.LINE_AA,
-            )
-
-
-def draw_face(canvas, face, width, height):
-    if not face:
-        return
-
-    connections = mp.solutions.face_mesh.FACEMESH_CONTOURS
-
-    for a, b in connections:
-        p1 = point(face, a, width, height)
-        p2 = point(face, b, width, height)
-
-        if p1 and p2:
-            cv2.line(
-                canvas,
-                p1,
-                p2,
-                (90, 150, 210),
-                1,
-                cv2.LINE_AA,
-            )
-
-    for i in range(0, len(face), 2):
-        p = point(face, i, width, height)
-
-        if p:
-            cv2.circle(
-                canvas,
-                p,
-                2,
-                (150, 220, 255),
-                -1,
-                cv2.LINE_AA,
-            )
-
-
-def draw_hand(canvas, hand, width, height):
-    if not hand:
-        return
-
-    draw_connections(
-        canvas,
-        hand,
-        HAND_CONNECTIONS,
-        width,
-        height,
-    )
-
-    draw_points(
-        canvas,
-        hand,
-        width,
-        height,
-        4,
-    )
-
-
-def draw_body(canvas, data, width, height):
-    pose = data["pose"]
-
-    if not pose:
-        return
-
-    draw_connections(
-        canvas,
-        pose,
-        POSE_CONNECTIONS,
-        width,
-        height,
-    )
-
-    draw_points(
-        canvas,
-        pose,
-        width,
-        height,
-        5,
-    )
-
-    # Neck / head connection.
-    shoulder_left = point(pose, 11, width, height)
-    shoulder_right = point(pose, 12, width, height)
-    nose = point(pose, 0, width, height)
-
-    if shoulder_left and shoulder_right:
-        neck = (
-            (shoulder_left[0] + shoulder_right[0]) // 2,
-            (shoulder_left[1] + shoulder_right[1]) // 2,
-        )
-
-        cv2.line(
-            canvas,
-            neck,
-            nose if nose else (
-                neck[0],
-                neck[1] - 50,
-            ),
-            (95, 180, 245),
-            3,
-            cv2.LINE_AA,
-        )
-
-    # Explicit arm-to-hand connections.
-    for pose_id, hand_key in [
-        (15, "left_hand"),
-        (16, "right_hand"),
-    ]:
-        wrist = point(pose, pose_id, width, height)
-        hand = data[hand_key]
-
-        if wrist and hand:
-            hand_wrist = point(
-                hand,
-                0,
-                width,
-                height,
-            )
-
-            if hand_wrist:
-                cv2.line(
-                    canvas,
-                    wrist,
-                    hand_wrist,
-                    (130, 210, 255),
-                    4,
-                    cv2.LINE_AA,
-                )
-
-    draw_hand(
-        canvas,
-        data["left_hand"],
-        width,
-        height,
-    )
-
-    draw_hand(
-        canvas,
-        data["right_hand"],
-        width,
-        height,
-    )
-
-    draw_face(
-        canvas,
-        data["face"],
-        width,
-        height,
-    )
-
-
-def draw_camera_card(canvas, frame, results, expanded=False):
-    if expanded:
-        x, y, w, h = 30, 80, 690, 460
-    else:
-        x, y, w, h = 30, 570, 300, 250
-
-    cv2.rectangle(
-        canvas,
-        (x, y),
-        (x + w, y + h),
-        (15, 23, 35),
-        -1,
-    )
-
-    cv2.rectangle(
-        canvas,
-        (x, y),
-        (x + w, y + h),
-        (75, 105, 135),
-        1,
-    )
-
-    preview = frame.copy()
-
-    # Face mesh
-    if results.face_landmarks:
-        mp.solutions.drawing_utils.draw_landmarks(
-            preview,
-            results.face_landmarks,
-            mp.solutions.face_mesh.FACEMESH_TESSELATION,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp.solutions.drawing_styles
-                .get_default_face_mesh_tesselation_style(),
-        )
-
-        mp.solutions.drawing_utils.draw_landmarks(
-            preview,
-            results.face_landmarks,
-            mp.solutions.face_mesh.FACEMESH_CONTOURS,
-            landmark_drawing_spec=None,
-            connection_drawing_spec=mp.solutions.drawing_styles
-                .get_default_face_mesh_contours_style(),
-        )
-
-    # Pose
-    if results.pose_landmarks:
-        mp.solutions.drawing_utils.draw_landmarks(
-            preview,
-            results.pose_landmarks,
-            mp.solutions.holistic.POSE_CONNECTIONS,
-            landmark_drawing_spec=mp.solutions.drawing_styles
-                .get_default_pose_landmarks_style(),
-            connection_drawing_spec=mp.solutions.drawing_utils.DrawingSpec(
-                color=(95, 180, 245),
-                thickness=2,
-                circle_radius=2,
-            ),
-        )
-
-    # Left hand
-    if results.left_hand_landmarks:
-        mp.solutions.drawing_utils.draw_landmarks(
-            preview,
-            results.left_hand_landmarks,
-            mp.solutions.holistic.HAND_CONNECTIONS,
-            landmark_drawing_spec=mp.solutions.drawing_styles
-                .get_default_hand_landmarks_style(),
-            connection_drawing_spec=mp.solutions.drawing_styles
-                .get_default_hand_connections_style(),
-        )
-
-    # Right hand
-    if results.right_hand_landmarks:
-        mp.solutions.drawing_utils.draw_landmarks(
-            preview,
-            results.right_hand_landmarks,
-            mp.solutions.holistic.HAND_CONNECTIONS,
-            landmark_drawing_spec=mp.solutions.drawing_styles
-                .get_default_hand_landmarks_style(),
-            connection_drawing_spec=mp.solutions.drawing_styles
-                .get_default_hand_connections_style(),
-        )
-
-    preview = cv2.resize(
-        preview,
-        (w - 20, h - 65),
-        interpolation=cv2.INTER_AREA,
-    )
-
-    cv2.putText(
-        canvas,
-        "LIVE CAMERA • LANDMARKS",
-        (x + 15, y + 25),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.42,
-        (205, 220, 235),
-        1,
-        cv2.LINE_AA,
-    )
-
-    canvas[
-        y + 38:y + 38 + preview.shape[0],
-        x + 10:x + 10 + preview.shape[1],
-    ] = preview
-
-    if not expanded:
-        bx1, by1 = x + 205, y + 8
-        bx2, by2 = x + 285, y + 42
-
-        cv2.rectangle(
-            canvas,
-            (bx1, by1),
-            (bx2, by2),
-            (25, 45, 60),
-            -1,
-        )
-
-        cv2.rectangle(
-            canvas,
-            (bx1, by1),
-            (bx2, by2),
-            (90, 170, 215),
-            1,
-        )
-
-        cv2.putText(
-            canvas,
-            "EXPAND",
-            (bx1 + 10, by1 + 23),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.38,
-            (180, 220, 240),
-            1,
-            cv2.LINE_AA,
-        )
-
-    else:
-        bx1, by1 = 1180, 70
-        bx2, by2 = 1320, 110
-
-        cv2.rectangle(
-            canvas,
-            (bx1, by1),
-            (bx2, by2),
-            (25, 45, 60),
-            -1,
-        )
-
-        cv2.rectangle(
-            canvas,
-            (bx1, by1),
-            (bx2, by2),
-            (90, 170, 215),
-            1,
-        )
-
-        cv2.putText(
-            canvas,
-            "MINIMIZE",
-            (bx1 + 25, by1 + 27),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.42,
-            (180, 220, 240),
-            1,
-            cv2.LINE_AA,
-        )
-
-def main():
-    tracker = ApertureTracker()
-    recognizer = SignRecognizer(sequence_length=30)
-    recognized_sign = "--"
-    recognition_confidence = 0.0
-    camera_expanded = False
-
-    camera = cv2.VideoCapture(0)
-
-    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
-    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 360)
-
+from dataclasses import dataclass, field
+
+import cv2
+import numpy as np
+
+from backend.config.settings import get_settings
+from backend.vision.drawing import (
+    BORDER,
+    MUTED,
+    draw_preview,
+    draw_skeleton,
+    fit_into,
+    panel,
+    put_text,
+)
+
+W, H = 1440, 900
+BG = (8, 13, 22)
+
+
+@dataclass(frozen=True)
+class Rect:
+    x: int
+    y: int
+    w: int
+    h: int
+
+    def contains(self, px: int, py: int) -> bool:
+        return self.x <= px <= self.x + self.w and self.y <= py <= self.y + self.h
+
+
+# One source of truth for layout: the same Rects are drawn AND hit-tested
+# (previously the EXPAND button was drawn at y=578..612 but clicked at y=590..625).
+RECOGNITION = Rect(30, 105, 300, 190)
+SKELETON = Rect(355, 105, 1050, 590)
+TRANSCRIPT = Rect(355, 710, 1050, 100)
+CAMERA_SMALL = Rect(30, 570, 300, 250)
+CAMERA_LARGE = Rect(30, 80, 690, 460)
+EXPAND_BTN = Rect(CAMERA_SMALL.x + 205, CAMERA_SMALL.y + 8, 80, 34)
+MINIMIZE_BTN = Rect(CAMERA_LARGE.x + CAMERA_LARGE.w - 110, CAMERA_LARGE.y + 6, 100, 30)
+
+
+@dataclass
+class Hud:
+    frame: dict
+    face_mesh: np.ndarray | None
+    preview: np.ndarray
+    fps: float
+    expanded: bool = False
+    state: dict = field(default_factory=dict)
+    transcript: list = field(default_factory=list)
+    model_name: str = "NO MODEL"
+    window: int = 45
+
+
+def make_background() -> np.ndarray:
+    canvas = np.full((H, W, 3), BG, np.uint8)
+    for x in range(0, W, 60):
+        cv2.line(canvas, (x, 0), (x, H), (14, 24, 36), 1)
+    for y in range(0, H, 60):
+        cv2.line(canvas, (0, y), (W, y), (14, 24, 36), 1)
+    put_text(canvas, "APERTURE", (35, 50), 0.85, (220, 230, 240), 2)
+    put_text(canvas, "SIGNS", (35, 80), 0.5, (120, 190, 235))
+    put_text(canvas, "LIVE HUMAN MOTION INTELLIGENCE", (200, 62), 0.45, MUTED)
+    return canvas
+
+
+def _button(canvas, r: Rect, label: str):
+    cv2.rectangle(canvas, (r.x, r.y), (r.x + r.w, r.y + r.h), (25, 45, 60), -1)
+    cv2.rectangle(canvas, (r.x, r.y), (r.x + r.w, r.y + r.h), (90, 170, 215), 1)
+    put_text(canvas, label, (r.x + 10, r.y + r.h // 2 + 5), 0.4, (180, 220, 240))
+
+
+def render(background: np.ndarray, hud: Hud) -> np.ndarray:
+    canvas = background.copy()
+    st = hud.state
+    label = st.get("label") or "--"
+    conf = float(st.get("confidence") or 0.0)
+
+    # Skeleton
+    r = SKELETON
+    panel(canvas, r.x, r.y, r.w, r.h, "LIVE SKELETAL REPRESENTATION")
+    sk = np.full((r.h - 50, r.w - 40, 3), (10, 17, 27), np.uint8)
+    draw_skeleton(sk, hud.frame, hud.face_mesh)
+    canvas[r.y + 40:r.y + 40 + sk.shape[0], r.x + 20:r.x + 20 + sk.shape[1]] = sk
+
+    # Recognition
+    r = RECOGNITION
+    panel(canvas, r.x, r.y, r.w, r.h, "SIGN RECOGNITION")
+    put_text(canvas, label.upper()[:10], (r.x + 15, r.y + 85), 1.2, (130, 220, 255), 2)
+    cv2.rectangle(canvas, (r.x + 15, r.y + 105), (r.x + 285, r.y + 117), BORDER, 1)
+    cv2.rectangle(canvas, (r.x + 15, r.y + 105), (r.x + 15 + int(270 * conf), r.y + 117), (130, 220, 255), -1)
+    put_text(canvas, f"CONFIDENCE {conf * 100:.0f}%", (r.x + 15, r.y + 138), 0.4, MUTED)
+    put_text(canvas, f"BUFFER {st.get('buffered', 0)} / {hud.window}", (r.x + 15, r.y + 163), 0.45)
+    put_text(canvas, hud.model_name, (r.x + 15, r.y + 182), 0.35, MUTED)
+
+    # Transcript
+    r = TRANSCRIPT
+    panel(canvas, r.x, r.y, r.w, r.h, "TRANSCRIPT")
+    words = " ".join(hud.transcript[-8:]) or "(waiting for a confirmed sign)"
+    put_text(canvas, words, (r.x + 20, r.y + 65), 0.9, (120, 220, 255), 2)
+    put_text(canvas, f"MOTION {st.get('energy', 0):.4f}", (r.x + r.w - 160, r.y + 25), 0.4, MUTED)
+
+    # Camera card
+    cam = CAMERA_LARGE if hud.expanded else CAMERA_SMALL
+    panel(canvas, cam.x, cam.y, cam.w, cam.h, "LIVE CAMERA")
+    fit_into(canvas, hud.preview, cam.x + 10, cam.y + 38, cam.w - 20, cam.h - 48)
+    _button(canvas, MINIMIZE_BTN if hud.expanded else EXPAND_BTN, "MINIMIZE" if hud.expanded else "EXPAND")
+
+    f = hud.frame
+    telemetry = (f"FACE {'OK' if f.get('face') is not None else '--'}   "
+                 f"L-HAND {'OK' if f.get('left') is not None else '--'}   "
+                 f"R-HAND {'OK' if f.get('right') is not None else '--'}   "
+                 f"POSE {'OK' if f.get('pose') is not None else '--'}   {hud.fps:04.1f} FPS")
+    put_text(canvas, telemetry, (355, 850), 0.45, MUTED)
+    return canvas
+
+
+def main(argv=None) -> int:
+    settings = get_settings()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--model", default=str(settings.model_path))
+    args = parser.parse_args(argv)
+
+    from pathlib import Path
+
+    from backend.ml.classifier import SignClassifier
+    from backend.ml.realtime import RealtimeRecognizer
+    from backend.vision.tracker import ApertureTracker
+
+    recognizer, model_name = None, "NO MODEL (see README)"
+    if Path(args.model).exists():
+        clf = SignClassifier.load(args.model)
+        recognizer = RealtimeRecognizer(
+            clf, window=settings.window_frames, stride=settings.stride,
+            min_confidence=settings.min_confidence, min_votes=settings.min_votes,
+            min_activity=settings.min_hand_activity)
+        model_name = f"MODEL {len(clf.labels)} LABELS"
+
+    camera = cv2.VideoCapture(args.camera)
+    camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     if not camera.isOpened():
-        print("ERROR: Could not open camera.")
-        return
+        print("ERROR: could not open camera", args.camera)
+        return 1
 
-    print("Aperture Signs UI started.")
-    print("Press Q to quit.")
+    expanded = False
+    transcript: list[str] = []
 
-    previous = time.time()
-
-    def camera_mouse(event, x, y, flags, param):
-        nonlocal camera_expanded
-
+    def on_mouse(event, x, y, *_):
+        nonlocal expanded
         if event != cv2.EVENT_LBUTTONDOWN:
             return
+        if not expanded and EXPAND_BTN.contains(x, y):
+            expanded = True
+        elif expanded and MINIMIZE_BTN.contains(x, y):
+            expanded = False
 
-        # Small camera EXPAND button.
-        if not camera_expanded:
-            if 235 <= x <= 315 and 590 <= y <= 625:
-                camera_expanded = True
+    cv2.namedWindow("Aperture Signs", cv2.WINDOW_NORMAL)
+    cv2.setMouseCallback("Aperture Signs", on_mouse)
+    background = make_background()
+    fps, last = 0.0, time.perf_counter()
+    state: dict = {}
 
-        # Large camera MINIMIZE button.
-        else:
-            if 1180 <= x <= 1320 and 70 <= y <= 110:
-                camera_expanded = False
+    with ApertureTracker() as tracker:
+        while True:
+            ok, bgr = camera.read()
+            if not ok:
+                print("ERROR: could not read a camera frame")
+                break
+            bgr = cv2.flip(bgr, 1)
+            tracked = tracker.process(bgr)
 
-    cv2.namedWindow(
-        "Aperture Signs",
-        cv2.WINDOW_NORMAL,
-    )
+            if recognizer:
+                event = recognizer.push(tracked.frame)
+                state = recognizer.state()
+                if event:
+                    transcript.append(event.label)
 
-    cv2.setMouseCallback(
-        "Aperture Signs",
-        camera_mouse,
-    )
+            now = time.perf_counter()
+            fps = 0.9 * fps + 0.1 / max(now - last, 1e-3)  # smoothed
+            last = now
 
-    while True:
-        ok, frame = camera.read()
-
-        if not ok:
-            print("ERROR: Could not read camera frame.")
-            break
-
-        frame = cv2.flip(frame, 1)
-
-        data, results = tracker.process(frame)
-
-        recognition = recognizer.analyze(tracker.history)
-
-        now = time.time()
-        fps = 1.0 / max(now - previous, 0.001)
-        previous = now
-
-        W, H = 1440, 900
-
-        canvas = np.zeros(
-            (H, W, 3),
-            dtype=np.uint8,
-        )
-
-        canvas[:] = (8, 13, 22)
-
-        # Subtle futuristic grid.
-        for x in range(0, W, 60):
-            cv2.line(
-                canvas,
-                (x, 0),
-                (x, H),
-                (14, 24, 36),
-                1,
-            )
-
-        for y in range(0, H, 60):
-            cv2.line(
-                canvas,
-                (0, y),
-                (W, y),
-                (14, 24, 36),
-                1,
-            )
-
-        cv2.putText(
-            canvas,
-            "APERTURE",
-            (35, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.85,
-            (220, 230, 240),
-            2,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            "SIGNS",
-            (35, 80),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (120, 190, 235),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            "LIVE HUMAN MOTION INTELLIGENCE",
-            (200, 62),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (130, 150, 170),
-            1,
-            cv2.LINE_AA,
-        )
-
-        # Main skeleton panel.
-        px, py = 355, 105
-        pw, ph = 1050, 700
-
-        cv2.rectangle(
-            canvas,
-            (px, py),
-            (px + pw, py + ph),
-            (15, 23, 35),
-            -1,
-        )
-
-        cv2.rectangle(
-            canvas,
-            (px, py),
-            (px + pw, py + ph),
-            (65, 90, 115),
-            1,
-        )
-
-        cv2.putText(
-            canvas,
-            "LIVE SKELETAL REPRESENTATION",
-            (px + 20, py + 32),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (205, 220, 235),
-            1,
-            cv2.LINE_AA,
-        )
-
-        sx, sy = px + 20, py + 50
-        sw, sh = pw - 40, ph - 70
-
-        skeleton = np.zeros(
-            (sh, sw, 3),
-            dtype=np.uint8,
-        )
-
-        skeleton[:] = (10, 17, 27)
-
-        draw_body(
-            skeleton,
-            data,
-            sw,
-            sh,
-        )
-
-        canvas[
-            sy:sy + sh,
-            sx:sx + sw,
-        ] = skeleton
-
-        # Camera.
-        draw_camera_card(
-            canvas,
-            frame,
-            results,
-            camera_expanded,
-        )
-
-        # Recognition panel.
-        rx, ry = 30, 105
-        rw, rh = 300, 190
-
-        cv2.rectangle(
-            canvas,
-            (rx, ry),
-            (rx + rw, ry + rh),
-            (15, 23, 35),
-            -1,
-        )
-
-        cv2.rectangle(
-            canvas,
-            (rx, ry),
-            (rx + rw, ry + rh),
-            (65, 90, 115),
-            1,
-        )
-
-        cv2.putText(
-            canvas,
-            "SIGN RECOGNITION",
-            (rx + 15, ry + 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (205, 220, 235),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            "--",
-            (rx + 15, ry + 90),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.2,
-            (130, 220, 255),
-            2,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            "TEMPORAL BUFFER",
-            (rx + 15, ry + 135),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.35,
-            (130, 150, 170),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            f"{len(tracker.history)} / 60",
-            (rx + 15, ry + 165),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.55,
-            (205, 220, 235),
-            1,
-            cv2.LINE_AA,
-        )
-
-        # Bottom telemetry.
-        telemetry = (
-            f"FACE {len(data['face']):03d}    "
-            f"L-HAND {len(data['left_hand']):02d}    "
-            f"R-HAND {len(data['right_hand']):02d}    "
-            f"POSE {len(data['pose']):02d}    "
-            f"{fps:04.1f} FPS"
-        )
-
-        # ==============================
-        # SIGN RECOGNITION PANEL
-        # ==============================
-
-        panel_x = 360
-        panel_y = 720
-        panel_w = 500
-        panel_h = 120
-
-        cv2.rectangle(
-            canvas,
-            (panel_x, panel_y),
-            (panel_x + panel_w, panel_y + panel_h),
-            (12, 20, 30),
-            -1,
-        )
-
-        cv2.rectangle(
-            canvas,
-            (panel_x, panel_y),
-            (panel_x + panel_w, panel_y + panel_h),
-            (65, 100, 125),
-            1,
-        )
-
-        cv2.putText(
-            canvas,
-            "SIGN RECOGNITION",
-            (panel_x + 18, panel_y + 25),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (150, 175, 195),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            recognized_sign,
-            (panel_x + 20, panel_y + 82),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.8,
-            (120, 220, 255),
-            3,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            f"CONFIDENCE  {recognition_confidence * 100:.0f}%",
-            (panel_x + 190, panel_y + 78),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (150, 175, 195),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            canvas,
-            f"MOTION  {recognition['movement_energy']:.4f}",
-            (panel_x + 190, panel_y + 100),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.4,
-            (110, 150, 175),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.imshow(
-            "Aperture Signs",
-            canvas,
-        )
-
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+            hud = Hud(tracked.frame, tracked.face_mesh, draw_preview(bgr, tracked.results), fps,
+                      expanded, state, transcript, model_name, settings.window_frames)
+            cv2.imshow("Aperture Signs", render(background, hud))
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
+                break
+            if key == ord("r"):
+                transcript.clear()
+                if recognizer:
+                    recognizer.reset()
 
     camera.release()
-    tracker.holistic.close()
     cv2.destroyAllWindows()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

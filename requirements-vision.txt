@@ -1,0 +1,7 @@
+# Camera tools: HUD (backend.vision.hand_tracker) and recording (backend.training.collect)
+-r requirements.txt
+mediapipe==0.10.21
+# mediapipe already depends on opencv-contrib-python. Do NOT also install
+# opencv-python / opencv-python-headless: two packages providing `cv2` fight
+# each other and the headless one breaks cv2.imshow.
+opencv-contrib-python==4.11.0.86

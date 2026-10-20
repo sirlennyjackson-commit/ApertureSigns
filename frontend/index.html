@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aperture Signs</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header>
+    <h1>Aperture <span>Signs</span></h1>
+    <div class="chips" role="status" aria-live="polite">
+      <span class="chip" id="chip-model">model: checking…</span>
+      <span class="chip" id="chip-ws">live: idle</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="card stage-card" aria-label="Camera">
+      <div class="stage-wrap">
+        <canvas id="stage" width="640" height="480" aria-label="Camera view with hand and body tracking"></canvas>
+        <p id="stage-msg" class="stage-msg">Camera is off. Press “Start camera”. Your video stays in this browser; only hand and body landmark numbers are sent to the server.</p>
+      </div>
+      <div class="row">
+        <button id="btn-camera" class="primary">Start camera</button>
+        <span id="fps" class="muted"></span>
+      </div>
+    </section>
+
+    <section class="card side">
+      <div class="tabs" role="tablist" aria-label="Mode">
+        <button role="tab" aria-selected="true"  aria-controls="tab-recognize" data-tab="recognize" id="t-recognize">Signs → text</button>
+        <button role="tab" aria-selected="false" aria-controls="tab-text"      data-tab="text"      id="t-text">Text → signs</button>
+        <button role="tab" aria-selected="false" aria-controls="tab-record"    data-tab="record"    id="t-record">Record data</button>
+      </div>
+
+      <div id="tab-recognize" class="panel" role="tabpanel" aria-labelledby="t-recognize">
+        <div class="guess">
+          <div id="guess-label" class="guess-label">—</div>
+          <div class="meter" aria-hidden="true"><div id="guess-bar"></div></div>
+          <div id="guess-hint" class="muted">Start the camera and sign inside the frame.</div>
+        </div>
+        <h2>Transcript</h2>
+        <p id="transcript" class="transcript" aria-live="polite"><span class="muted">Confirmed signs appear here.</span></p>
+        <div class="row">
+          <button id="btn-speak">Speak</button>
+          <button id="btn-copy">Copy</button>
+          <button id="btn-clear">Clear</button>
+        </div>
+      </div>
+
+      <div id="tab-text" class="panel hidden" role="tabpanel" aria-labelledby="t-text">
+        <label for="text-in">Type or dictate</label>
+        <textarea id="text-in" rows="3" maxlength="1000" placeholder="e.g. Hello, thank you"></textarea>
+        <div class="row">
+          <button id="btn-translate" class="primary">Translate</button>
+          <button id="btn-mic" aria-pressed="false">🎙 Dictate</button>
+          <select id="stt-lang" aria-label="Dictation language">
+            <option value="">Auto</option><option value="en">English</option><option value="sw">Kiswahili</option>
+          </select>
+        </div>
+        <p id="text-note" class="muted" aria-live="polite"></p>
+        <div id="chips" class="gloss-chips"></div>
+        <div id="player" class="player hidden" aria-live="polite">
+          <div id="player-gloss" class="player-gloss"></div>
+          <div id="player-letters" class="player-letters"></div>
+          <p class="muted">Avatar animation clips are not available yet; glosses are shown instead.</p>
+        </div>
+        <button id="btn-play" class="hidden">▶ Play sequence</button>
+      </div>
+
+      <div id="tab-record" class="panel hidden" role="tabpanel" aria-labelledby="t-record">
+        <p class="muted">Build the training set from the browser. Hold the sign for the whole clip. Record a <code>_idle</code> label (hands resting) too.</p>
+        <div class="grid2">
+          <div><label for="rec-label">Sign label</label><input id="rec-label" value="hello" maxlength="40" autocomplete="off"></div>
+          <div><label for="rec-signer">Signer id</label><input id="rec-signer" value="signer1" maxlength="40" autocomplete="off"></div>
+          <div><label for="rec-seconds">Clip seconds</label><input id="rec-seconds" type="number" min="0.5" max="8" step="0.5" value="1.5"></div>
+        </div>
+        <label class="check"><input id="rec-consent" type="checkbox"> The person signing consents to their hand and body landmarks being saved for training.</label>
+        <div class="row"><button id="btn-record" class="primary">Record clip</button><button id="btn-reload">Reload model</button></div>
+        <p id="rec-status" class="muted" aria-live="polite"></p>
+        <h2>Recorded so far</h2>
+        <ul id="rec-stats" class="stats"></ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="muted">Training happens on the server: <code>python -m backend.training.train</code>, then press “Reload model”.</footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

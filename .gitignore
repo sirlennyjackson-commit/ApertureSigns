@@ -2,9 +2,18 @@ __pycache__/
 *.py[cod]
 .venv/
 .venv312/
-__pycache__/
-*.py[cod]
-
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
 .DS_Store
+
+# Recorded training data (people's movement data: keep private, get consent)
+data/sequences/
+# Trained model files
+models/*.npz
+
 backend/vision/hand_tracker.backup.py
 backend/vision/hand_tracker.broken.py
+node_modules/
+package-lock.json

@@ -1,0 +1,7 @@
+{
+  "name": "aperture-signs-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test payload.test.mjs && node dom.test.mjs" },
+  "devDependencies": { "jsdom": "^25.0.0" }
+}

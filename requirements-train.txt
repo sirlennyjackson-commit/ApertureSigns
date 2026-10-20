@@ -1,0 +1,3 @@
+# Training the sign classifier
+-r requirements-vision.txt
+scikit-learn>=1.4

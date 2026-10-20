@@ -1,0 +1,12 @@
+services:
+  aperture:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      # Set to 1 to allow recording training clips from the browser.
+      APERTURE_ENABLE_COLLECT: "${APERTURE_ENABLE_COLLECT:-0}"
+      APERTURE_CORS_ORIGINS: "${APERTURE_CORS_ORIGINS:-http://localhost:8000}"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    restart: unless-stopped
