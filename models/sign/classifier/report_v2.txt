@@ -1,0 +1,105 @@
+classes=60 sequences=531 folds=5
+chance top-1 = 0.017
+model         rand top1  rand top3  signer top1  signer top3
+logreg            0.405      0.620        0.386        0.629
+svm_rbf           0.294      0.465        0.290        0.471
+extratrees        0.369      0.589        0.365        0.580
+
+BEST (by signer-independent top-1): logreg
+
+PER-SIGN (signer-independent)
+              precision    recall  f1-score   support
+
+         ALL       0.40      0.25      0.31         8
+      ALWAYS       0.36      0.45      0.40        11
+         BIG       0.33      0.33      0.33         9
+        BOOK       0.25      0.29      0.27         7
+         BOY       0.00      0.00      0.00         6
+         BUY       0.00      0.00      0.00         6
+         CAR       0.50      0.20      0.29         5
+        COME       0.29      0.36      0.32        11
+      FAMILY       0.20      0.20      0.20         5
+      FATHER       0.25      0.20      0.22         5
+      FINISH       0.00      0.00      0.00         5
+        FOOD       0.25      0.33      0.29         6
+        FULL       0.50      0.20      0.29         5
+      FUTURE       0.50      0.50      0.50        14
+         GET       0.22      0.29      0.25         7
+        GIVE       0.25      0.17      0.20         6
+          GO       0.50      0.50      0.50        12
+        GOOD       0.47      0.58      0.52        12
+        HAVE       0.58      0.54      0.56        13
+        HELP       0.33      0.17      0.22         6
+         HER       0.00      0.00      0.00         9
+         HIS       0.00      0.00      0.00         5
+       HOUSE       0.44      0.50      0.47         8
+        LIKE       0.00      0.00      0.00         6
+        LOVE       0.69      0.85      0.76        13
+        MAKE       0.67      0.57      0.62         7
+         MAN       0.33      0.20      0.25         5
+          ME       0.53      0.57      0.55        30
+        MINE       0.59      0.81      0.68        21
+         NEW       0.50      0.20      0.29         5
+        NICE       0.00      0.00      0.00         6
+     NOTHING       0.37      0.70      0.48        10
+         NOW       0.57      0.67      0.62        12
+          OF       0.00      0.00      0.00         5
+         OLD       0.33      0.20      0.25         5
+        PAST       0.49      0.74      0.59        23
+      PEOPLE       0.33      0.17      0.22         6
+        ROOM       0.50      0.20      0.29         5
+        SAME       1.00      0.60      0.75         5
+      SCHOOL       0.50      0.33      0.40         6
+         SEE       0.00      0.00      0.00         5
+         SHE       0.10      0.08      0.09        13
+        SOME       0.43      0.50      0.46         6
+       STORY       0.00      0.00      0.00         5
+     TEACHER       0.50      0.20      0.29         5
+        THAT       0.28      0.33      0.30        15
+       THERE       0.75      0.43      0.55         7
+        THIS       0.18      0.25      0.21        16
+        TIME       0.00      0.00      0.00         5
+       TODAY       0.00      0.00      0.00         5
+        TRUE       0.61      0.65      0.63        17
+          UP       0.00      0.00      0.00         5
+        WANT       0.00      0.00      0.00         5
+          WE       0.10      0.11      0.11         9
+         WHO       1.00      0.17      0.29         6
+        WORK       0.33      0.58      0.42        12
+       WRITE       0.17      0.20      0.18         5
+         YOU       0.35      0.47      0.40        19
+        YOUR       0.67      0.33      0.44         6
+       YOURS       0.40      0.57      0.47        14
+
+    accuracy                           0.39       531
+   macro avg       0.33      0.30      0.29       531
+weighted avg       0.37      0.39      0.36       531
+
+REJECTION CURVE (signer-independent): confidence threshold -> coverage / accuracy on accepted
+  conf>=0.05  coverage=100.0%  accuracy=38.6%
+  conf>=0.10  coverage=98.5%  accuracy=39.2%
+  conf>=0.15  coverage=92.7%  accuracy=41.1%
+  conf>=0.20  coverage=79.3%  accuracy=45.8%
+  conf>=0.30  coverage=56.7%  accuracy=53.2%
+  conf>=0.40  coverage=39.9%  accuracy=62.3%
+  conf>=0.50  coverage=30.3%  accuracy=65.8%
+  conf>=0.60  coverage=20.7%  accuracy=71.8%
+  conf>=0.70  coverage=14.9%  accuracy=73.4%
+chosen reject threshold: 0.4
+
+MOST CONFUSED PAIRS (true -> predicted)
+  THIS -> THAT: 5
+  SHE -> HER: 5
+  ALL -> THIS: 5
+  THAT -> THIS: 4
+  HER -> YOURS: 4
+  WHO -> ME: 3
+  SHE -> YOU: 3
+  ME -> HAVE: 3
+  LIKE -> ME: 3
+  YOUR -> YOURS: 2
+  YOU -> WORK: 2
+  WRITE -> THAT: 2
+  WE -> GO: 2
+  WE -> COME: 2
+  WANT -> LIKE: 2

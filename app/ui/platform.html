@@ -1,0 +1,1594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aperture Signs</title>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<style>
+:root {
+  --bg: #0c1014;
+  --panel: #141a21;
+  --panel-2: #10161c;
+  --line: rgba(0, 229, 255, 0.16);
+  --cyan: #00e5ff;
+  --teal: #5ce1d4;
+  --lime: #9dff57;
+  --text: #e8f4f8;
+  --muted: #7b8c99;
+  --warn: #ffcd60;
+  --danger: #ff6b6b;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: "Segoe UI", Inter, Arial, sans-serif;
+}
+.screen { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.screen.active { opacity: 1; pointer-events: auto; }
+#boot, #handoff {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 48px; background: radial-gradient(circle at 20% 20%, rgba(0,229,255,.12), transparent 32%), var(--bg);
+}
+.boot-title { font-size: 56px; line-height: .92; letter-spacing: -3px; margin: 0 0 16px; }
+.boot-title span { color: var(--lime); }
+.muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.progress-track { height: 3px; background: #1c262e; margin-top: 28px; }
+.progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--lime)); }
+.platform-shell { display: grid; grid-template-columns: 220px 1fr; height: 100%; }
+.sidebar { background: #0e141a; border-right: 1px solid var(--line); padding: 22px 14px; display: flex; flex-direction: column; }
+.brand { letter-spacing: 2px; font-size: 11px; color: var(--cyan); margin-bottom: 28px; }
+.nav-item {
+  width: 100%; text-align: left; background: transparent; color: #c5d4dc; border: 1px solid transparent;
+  padding: 11px 12px; margin-bottom: 6px; letter-spacing: 1.4px; font-size: 10px; text-transform: uppercase; cursor: pointer;
+}
+.nav-item.active, .nav-item:hover { border-color: var(--line); color: var(--cyan); background: rgba(0,229,255,.05); }
+.sidebar-note { margin-top: auto; color: var(--muted); font-size: 10px; line-height: 1.6; letter-spacing: .4px; }
+.main { display: flex; flex-direction: column; min-width: 0; padding: 16px 18px; }
+.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 14px; }
+.header h1 { margin: 0; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.status-pill { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 1.6px; color: var(--teal); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 10px var(--lime); }
+.view { display: none; min-height: 0; flex: 1; }
+.view.active { display: grid; }
+.grid-2 { grid-template-columns: 1.7fr .9fr; gap: 14px; }
+.grid-3 { grid-template-columns: 1.4fr .8fr .8fr; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); min-height: 0; }
+.card h2 { margin: 0; padding: 12px 14px; font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid rgba(255,255,255,.05); font-weight: 600; }
+.camera-frame { position: relative; height: calc(100% - 118px); min-height: 360px; background: #070b10; }
+.camera-frame img, .camera-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.camera-frame canvas { pointer-events: none; }
+.camera-message { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; letter-spacing: 1px; background: rgba(7,11,16,.72); text-align: center; padding: 24px; }
+.camera-message[hidden] { display: none; }
+.controls { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+button.cmd {
+  background: #0c1820; color: var(--cyan); border: 1px solid var(--line); padding: 8px 12px;
+  letter-spacing: 1.4px; font-size: 10px; text-transform: uppercase; cursor: pointer;
+}
+button.cmd:hover { background: rgba(0,229,255,.08); }
+button.cmd.danger { color: var(--danger); border-color: rgba(255,107,107,.35); }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px 12px; }
+.metric { border: 1px solid var(--line); padding: 10px; background: var(--panel-2); }
+.metric span { display: block; font-size: 8px; letter-spacing: 1.6px; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.metric strong { font-size: 20px; letter-spacing: -0.5px; }
+.rows { padding: 8px 14px 14px; }
+.row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.row b { font-weight: 600; color: var(--lime); }
+.row b.warn { color: var(--warn); }
+.row b.off { color: var(--muted); }
+.row b.bad { color: var(--danger); }
+.note { padding: 0 14px 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+label.field { display: block; padding: 8px 14px; font-size: 11px; color: var(--muted); }
+input, select {
+  width: 100%; margin-top: 6px; background: #0b1116; color: var(--text); border: 1px solid var(--line); padding: 8px;
+}
+.canvas-wrap { position: relative; height: calc(100% - 44px); min-height: 280px; background: #070b10; }
+.canvas-wrap canvas { width: 100%; height: 100%; display: block; }
+#avatarCanvas, #signingAvatarCanvas { touch-action: none; }
+.log { height: 180px; overflow: auto; margin: 0 14px 14px; padding: 10px; background: #0b1116; color: #9fb3bf; font: 11px Consolas, monospace; white-space: pre-wrap; }
+.honest { color: var(--warn); font-size: 11px; letter-spacing: .4px; padding: 0 14px 12px; }
+</style>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #090d12;
+  --panel: #111923;
+  --panel-2: #0c131b;
+  --line: rgba(153,187,207,.12);
+  --cyan: #74e5e2;
+  --teal: #68dfc4;
+  --lime: #b9f477;
+  --text: #eff7f7;
+  --muted: #82939e;
+  --warn: #f3c778;
+  --danger: #ff8387;
+}
+html, body { background: var(--bg); font-family: "Segoe UI Variable", "Segoe UI", Inter, Arial, sans-serif; font-size: 13px; }
+.screen { visibility: hidden; transition: none; }
+.screen.active { visibility: visible; }
+#platform {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 23% 44%, rgba(81, 186, 120, .17), transparent 38%),
+    radial-gradient(ellipse at 54% 36%, rgba(68, 176, 148, .14), transparent 42%),
+    radial-gradient(ellipse at 81% 48%, rgba(123, 102, 170, .13), transparent 40%),
+    linear-gradient(108deg, transparent 17%, rgba(83, 190, 125, .09) 25%, rgba(119, 207, 157, .16) 30%, transparent 39%),
+    linear-gradient(99deg, transparent 34%, rgba(57, 166, 139, .12) 43%, rgba(95, 202, 161, .18) 48%, transparent 58%),
+    linear-gradient(112deg, transparent 55%, rgba(113, 105, 171, .1) 64%, rgba(88, 177, 143, .13) 70%, transparent 80%),
+    var(--bg);
+}
+#boot, #handoff {
+  padding: 7vw;
+  background: radial-gradient(ellipse at 78% 44%, rgba(46,123,131,.19), transparent 35%),
+    radial-gradient(ellipse at 15% 15%, rgba(116,229,226,.1), transparent 38%), var(--bg);
+}
+.boot-title { font-size: clamp(48px, 6vw, 82px); letter-spacing: -5px; margin-bottom: 22px; font-weight: 750; }
+.muted { max-width: 560px; line-height: 1.7; }
+.progress-track { max-width: 560px; border-radius: 4px; overflow: hidden; }
+.progress-fill { box-shadow: 0 0 14px rgba(104,223,196,.48); transition: width .15s linear; }
+.platform-shell {
+  grid-template-columns: 232px minmax(0, 1fr);
+  background: transparent;
+}
+.sidebar {
+  position: relative;
+  background: linear-gradient(180deg, #0d141b, #0b1016);
+  border-right-color: var(--line);
+  padding: 24px 14px 18px;
+}
+.brand-wrap { display: flex; align-items: center; gap: 11px; padding: 0 8px; margin-bottom: 34px; }
+.brand-mark {
+  display: grid; place-items: center; width: 35px; height: 35px; flex: 0 0 auto;
+  border: 1px solid rgba(116,229,226,.3); border-radius: 11px; color: var(--cyan);
+  background: linear-gradient(145deg, rgba(116,229,226,.14), rgba(116,229,226,.025));
+  box-shadow: inset 0 1px rgba(255,255,255,.07), 0 5px 22px rgba(0,0,0,.2);
+}
+.brand-mark svg { width: 20px; height: 20px; }
+.brand { margin: 0; color: var(--text); font-size: 10px; font-weight: 700; letter-spacing: 1.7px; }
+.brand-caption { margin-top: 4px; color: var(--muted); font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; }
+.nav-label { padding: 0 12px 10px; color: #60727f; font-size: 9px; letter-spacing: 1.8px; text-transform: uppercase; }
+.nav-item {
+  position: relative; display: flex; align-items: center; gap: 11px; width: 100%;
+  border: 1px solid transparent; border-radius: 9px; padding: 11px 12px; margin-bottom: 5px;
+  color: #91a1ab; font-size: 11px; letter-spacing: .2px;
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.nav-item svg { width: 16px; height: 16px; flex: 0 0 auto; color: #748893; transition: color .18s ease; }
+.nav-item.active, .nav-item:hover {
+  border-color: rgba(116,229,226,.13); color: #e4f7f4;
+  background: linear-gradient(90deg, rgba(116,229,226,.12), rgba(116,229,226,.035));
+}
+.nav-item.active { box-shadow: inset 2px 0 var(--cyan); }
+.nav-item.active svg, .nav-item:hover svg { color: var(--cyan); }
+.nav-item:hover { transform: translateX(1px); }
+.sidebar-note {
+  margin-top: auto; padding: 13px 12px; border: 1px solid var(--line); border-radius: 10px;
+  color: #7d8f98; font-size: 10px; line-height: 1.65; background: rgba(255,255,255,.018);
+}
+.sidebar-note strong { display: block; margin-bottom: 3px; color: #c4d3d7; font-size: 10px; font-weight: 600; }
+.main { min-width: 0; min-height: 0; padding: 25px 28px 26px; }
+.header { flex: 0 0 auto; border-bottom-color: var(--line); padding: 0 1px 17px; margin-bottom: 19px; }
+.header-copy { display: flex; align-items: center; gap: 13px; }
+.header-accent {
+  width: 3px; height: 30px; border-radius: 4px;
+  background: linear-gradient(180deg, var(--cyan), var(--lime)); box-shadow: 0 0 15px rgba(116,229,226,.28);
+}
+.header h1 { margin: 0; color: var(--text); font-size: 19px; font-weight: 650; letter-spacing: -.4px; }
+.header-caption { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: .25px; }
+.status-pill {
+  gap: 9px; padding: 8px 11px; border: 1px solid rgba(104,223,196,.17); border-radius: 99px;
+  color: var(--teal); font-size: 9px; letter-spacing: 1.2px; background: rgba(104,223,196,.045);
+}
+.dot { width: 7px; height: 7px; background: var(--lime); box-shadow: 0 0 10px rgba(185,244,119,.55); }
+.status-pill[data-state="live"] .dot { animation: status-pulse 1.8s ease-in-out infinite; }
+.status-pill[data-state="warn"] { color: var(--warn); border-color: rgba(243,199,120,.2); background: rgba(243,199,120,.05); }
+.status-pill[data-state="warn"] .dot { background: var(--warn); box-shadow: 0 0 10px rgba(243,199,120,.5); }
+.status-pill[data-state="error"] { color: var(--danger); border-color: rgba(255,131,135,.2); background: rgba(255,131,135,.05); }
+.status-pill[data-state="error"] .dot { background: var(--danger); box-shadow: 0 0 10px rgba(255,131,135,.5); }
+@keyframes status-pulse { 50% { opacity: .45; box-shadow: 0 0 2px rgba(185,244,119,.2); } }
+.view.active { animation: none; }
+.grid-2 { grid-template-columns: minmax(0, 1.72fr) minmax(290px, .9fr); gap: 16px; }
+.card {
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(145deg, rgba(21,31,42,.96), rgba(15,23,32,.96));
+  box-shadow: 0 14px 32px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.025);
+}
+.card h2 {
+  display: flex; align-items: center; gap: 8px; min-height: 47px; margin: 0; padding: 0 16px;
+  border-bottom: 1px solid rgba(255,255,255,.055); color: #b5c6ce; font-size: 10px;
+  font-weight: 650; letter-spacing: 1.25px;
+}
+.card h2::before { content: ""; width: 5px; height: 5px; border-radius: 2px; background: var(--cyan); box-shadow: 0 0 8px rgba(116,229,226,.35); }
+.camera-frame {
+  position: relative; flex: 1; min-height: 220px; overflow: hidden;
+  background: radial-gradient(ellipse at center, #111c25, #070b10 74%);
+}
+.camera-frame::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: .2;
+  background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(0,0,0,.18) 6px);
+}
+.camera-frame img, .camera-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.camera-frame #cameraPreview { z-index: 1; opacity: 0; transition: opacity .25s ease; }
+.camera-frame.is-live #cameraPreview { opacity: 1; }
+.camera-frame canvas { z-index: 3; pointer-events: none; }
+.camera-corner { position: absolute; z-index: 4; width: 17px; height: 17px; border-color: rgba(116,229,226,.68); border-style: solid; pointer-events: none; }
+.camera-corner.tl { top: 13px; left: 13px; border-width: 1px 0 0 1px; }
+.camera-corner.tr { top: 13px; right: 13px; border-width: 1px 1px 0 0; }
+.camera-corner.bl { bottom: 13px; left: 13px; border-width: 0 0 1px 1px; }
+.camera-corner.br { bottom: 13px; right: 13px; border-width: 0 1px 1px 0; }
+.camera-hud {
+  position: absolute; z-index: 4; top: 20px; display: flex; align-items: center; gap: 7px;
+  padding: 6px 9px; border: 1px solid rgba(255,255,255,.08); border-radius: 6px;
+  color: #d7e5e7; background: rgba(7,13,18,.72); font: 9px Consolas, monospace;
+  letter-spacing: .8px; backdrop-filter: blur(7px);
+}
+.camera-hud-left { left: 20px; }
+.camera-hud-right { right: 20px; color: #9db0b9; }
+.camera-hud .dot { width: 6px; height: 6px; }
+.camera-frame:not(.is-live) .camera-hud .dot { background: #7d8a91; box-shadow: none; }
+.camera-message {
+  position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; gap: 11px; padding: 24px;
+  color: #b5c5ca; background: rgba(7,11,16,.32); text-align: center; font-size: 11px; letter-spacing: .15px;
+}
+.camera-message::before {
+  content: ""; width: 39px; height: 39px; border: 1px solid rgba(116,229,226,.25); border-radius: 13px;
+  background: radial-gradient(circle, rgba(116,229,226,.14), rgba(116,229,226,.025));
+  box-shadow: 0 0 32px rgba(116,229,226,.06);
+}
+.controls { align-items: center; gap: 8px; padding: 12px 14px; }
+button.cmd {
+  border: 1px solid rgba(116,229,226,.18); border-radius: 7px; padding: 9px 12px;
+  color: var(--cyan); background: rgba(116,229,226,.055); font-size: 10px;
+  font-weight: 600; letter-spacing: .35px; transition: .18s ease;
+}
+button.cmd:hover { border-color: rgba(116,229,226,.36); background: rgba(116,229,226,.13); transform: translateY(-1px); }
+button.cmd:active { transform: translateY(0); }
+button.cmd:focus-visible, .nav-item:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button.cmd.primary { border-color: transparent; color: #091510; background: linear-gradient(135deg, #c5f48a, #84dfbd); box-shadow: 0 4px 15px rgba(147,225,159,.13); }
+button.cmd.primary:hover { filter: brightness(1.06); background: linear-gradient(135deg, #d2fa9e, #97eac8); }
+button.cmd.danger { border-color: rgba(255,131,135,.25); color: var(--danger); background: rgba(255,131,135,.045); }
+button.cmd.danger:hover { border-color: rgba(255,131,135,.4); background: rgba(255,131,135,.11); }
+button.cmd.is-active { border-color: rgba(185,244,119,.3); color: var(--lime); background: rgba(185,244,119,.08); }
+.metrics { gap: 8px; padding: 12px 14px; }
+.metric { border: 1px solid rgba(255,255,255,.07); border-radius: 9px; padding: 11px 12px; background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.012)); }
+.metric span { margin-bottom: 7px; font-size: 8px; letter-spacing: 1.1px; }
+.metric strong { color: #eef7f2; font-size: 20px; font-weight: 650; letter-spacing: -.7px; }
+.rows { padding: 8px 16px 14px; }
+.row { align-items: center; min-height: 37px; padding: 7px 0; font-size: 10px; letter-spacing: .3px; }
+.row:last-child { border-bottom: 0; }
+.row span { color: #93a4ad; }
+.row b { color: var(--lime); font-size: 9px; font-weight: 650; letter-spacing: .7px; overflow-wrap: anywhere; text-align: right; }
+.note { padding: 0 16px 15px; font-size: 11px; line-height: 1.65; }
+.honest { margin: 0; padding: 2px 16px 9px; font-size: 10px; line-height: 1.55; }
+label.field { padding: 8px 16px; font-size: 10px; letter-spacing: .2px; }
+input, select { margin-top: 6px; border-radius: 7px; padding: 9px 10px; font: inherit; }
+.canvas-wrap { position: relative; flex: 1; min-height: 220px; height: auto; background: #080d12; }
+.log {
+  min-height: 110px; max-height: 220px; overflow: auto; overflow-wrap: anywhere;
+  margin: 0 16px 16px; padding: 12px; border: 1px solid rgba(255,255,255,.06); border-radius: 8px;
+  background: #0a1118; color: #a7bbc2; font: 10px/1.65 Consolas, monospace;
+}
+.translate-grid { grid-template-columns: minmax(0, 1.12fr) minmax(320px, .88fr); gap: 16px; }
+.translate-content { min-height: 0; flex: 1; overflow: auto; padding: 8px 16px 16px; }
+.translate-content .field { padding: 8px 0; color: #b7c7cc; font-size: 11px; }
+.translate-content textarea {
+  display: block; width: 100%; min-height: 92px; resize: vertical; margin-top: 8px; padding: 11px 12px;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: #0a1118;
+  font: 12px/1.6 "Segoe UI Variable", "Segoe UI", sans-serif;
+}
+.translate-content textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.translate-controls { padding: 8px 0 12px; }
+.vocabulary-browser { margin: 2px 0 8px; color: #a8bac1; font-size: 10px; }
+.vocabulary-browser summary { width: fit-content; color: var(--teal); cursor: pointer; }
+.vocabulary-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 108px; overflow-y: auto; padding: 9px 1px 3px; }
+.vocabulary-word { padding: 5px 7px !important; border-radius: 5px !important; font-size: 9px !important; }
+.translation-status { min-height: 38px; margin: 0; padding: 9px 11px; border-left: 2px solid var(--cyan); color: #a8bac1; background: rgba(116,229,226,.035); font-size: 10px; line-height: 1.55; }
+.word-map { display: flex; flex-wrap: wrap; gap: 6px; min-height: 12px; padding: 10px 0 14px; }
+.word-chip { padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 9px; color: #b8c8cd; }
+.word-chip.available { border-color: rgba(185,244,119,.22); color: var(--lime); background: rgba(185,244,119,.045); }
+.word-chip.unmapped { border-color: rgba(243,199,120,.22); color: var(--warn); background: rgba(243,199,120,.04); }
+.live-sign-panel { border-top: 1px solid var(--line); padding-top: 12px; }
+.live-sign-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.live-sign-heading h3 { margin: 0; color: #c7d5d8; font-size: 11px; font-weight: 600; }
+.speech-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; }
+.speech-toggle input { width: 14px; height: 14px; margin: 0; accent-color: var(--teal); }
+.live-sign-text { min-height: 74px; max-height: 112px; overflow: auto; margin-top: 10px; padding: 12px; border: 1px solid rgba(255,255,255,.06); border-radius: 8px; color: #eef7f2; background: #0a1118; font-size: 17px; line-height: 1.5; overflow-wrap: anywhere; }
+.live-sign-panel .controls { padding: 9px 0 5px; }
+.live-sign-panel .honest { padding: 0 0 5px; }
+.sign-avatar-stage { min-height: 250px; }
+.sign-avatar-stage canvas { display: block; }
+.avatar-word-label { margin-left: auto; color: var(--lime); font-size: 9px; letter-spacing: .5px; }
+#signProgress { flex: 1 1 80px; min-width: 50px; height: 4px; accent-color: var(--teal); }
+button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+[data-view="translate"] .note { min-height: 42px; }
+[data-view="settings"] .card:first-child { overflow-y: auto; }
+[data-view="settings"] .card:first-child .controls { position: sticky; bottom: 0; background: var(--panel); }
+@media (max-width: 1320px) {
+  .platform-shell { grid-template-columns: 205px minmax(0, 1fr); }
+  .main { padding: 20px 20px 22px; }
+  .grid-2 { grid-template-columns: minmax(0, 1.55fr) minmax(265px, .9fr); gap: 12px; }
+  .metrics { gap: 6px; padding: 10px 12px; }
+  .metric { padding: 9px; }
+}
+@media (max-height: 820px) {
+  .main { padding-top: 15px; padding-bottom: 16px; }
+  .header { padding-bottom: 12px; margin-bottom: 12px; }
+  .sidebar { padding-top: 18px; }
+  .brand-wrap { margin-bottom: 24px; }
+  .nav-item { padding-top: 9px; padding-bottom: 9px; }
+  .camera-frame { min-height: 180px; }
+}
+@media (max-height: 760px) {
+  .main { padding: 12px 16px; }
+  .header { padding-bottom: 9px; margin-bottom: 9px; }
+  .header-accent { height: 25px; }
+  .sidebar { padding: 12px 11px; }
+  .brand-wrap { margin-bottom: 16px; }
+  .nav-item { padding-top: 7px; padding-bottom: 7px; margin-bottom: 3px; }
+  .nav-label { padding-bottom: 6px; }
+  .sidebar-note { padding: 9px; }
+  .card h2 { min-height: 38px; }
+  .camera-frame { min-height: 150px; }
+  .controls { padding: 8px 11px; }
+  button.cmd { padding: 7px 10px; }
+  .rows { padding-top: 4px; padding-bottom: 8px; }
+  .row { min-height: 31px; padding: 5px 0; }
+  .honest { padding-bottom: 5px; }
+  .metrics { padding-top: 7px; padding-bottom: 7px; }
+  .metric { padding: 7px 9px; }
+  .canvas-wrap { min-height: 150px; }
+}
+@media (max-width: 1120px) {
+  .platform-shell { grid-template-columns: 190px minmax(0, 1fr); }
+  .main { padding-left: 15px; padding-right: 15px; }
+  .grid-2 { grid-template-columns: minmax(0, 1.4fr) minmax(245px, .9fr); gap: 10px; }
+  .translate-grid { grid-template-columns: minmax(0, 1fr) minmax(280px, .9fr); gap: 10px; }
+}
+@media (max-width: 980px) {
+  .translate-grid { grid-template-columns: 1fr; grid-template-rows: minmax(340px, 1fr) minmax(260px, .85fr); overflow-y: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<section id="boot" class="screen active">
+  <div class="boot-title">APERTURE<br><span>SIGNS LAB</span></div>
+  <div class="muted" id="bootNarrative">Starting the development and intelligence platform. This desktop lab is for building the wearable pipeline — it is not the glasses product.</div>
+  <div class="progress-track"><div id="bootFill" class="progress-fill"></div></div>
+  <div class="muted" id="bootStage" style="margin-top:10px">SYNCHRONIZING VISION PIPELINE</div>
+</section>
+<section id="handoff" class="screen">
+  <div class="boot-title" style="font-size:32px;letter-spacing:-1px">Camera to avatar pipeline</div>
+  <div class="muted">Live capture → landmarks → motion filter → Blender stream. Sign-language translation remains a later stage.</div>
+  <div class="progress-track"><div id="handoffFill" class="progress-fill"></div></div>
+</section>
+<section id="platform" class="screen">
+  <div class="platform-shell">
+    <aside class="sidebar">
+      <div class="brand-wrap">
+        <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" stroke="currentColor" stroke-width="1.4"/><path d="m8 9.7 4-2.2 4 2.2v4.6l-4 2.2-4-2.2V9.7Z" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
+        <div><div class="brand">APERTURE SIGNS</div><div class="brand-caption">Motion intelligence lab</div></div>
+      </div>
+      <div class="nav-label">Workspace</div>
+      <button class="nav-item active" data-view="capture"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="m8 6 1.3-2h5.4L16 6" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.5"/></svg>Live Capture</button>
+      <button class="nav-item" data-view="translate"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h10M9 3v2m4 0c-.8 4-3.3 6.8-7 8.5m1-5.5c1.1 2.3 3.2 4.4 6 6m1 5 3.5-9 3.5 9m-5.8-2.5h4.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Aurora Translate</button>
+      <button class="nav-item" data-view="motion"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 18 9 12l3 3 7-9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/><circle cx="9" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="15" r="1.5" fill="currentColor"/><circle cx="19" cy="6" r="1.5" fill="currentColor"/></svg>Motion Lab</button>
+      <button class="nav-item" data-view="avatar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M12 7v6m0-3-5 2m5-2 5 2m-5 1-4 6m4-6 4 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Avatar Studio</button>
+      <button class="nav-item" data-view="monitor"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19V5m0 14h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="m7 15 3-4 3 2 5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>System Monitor</button>
+      <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="m19 13.5 1.2.9-1.2 2.1-1.5-.5a7.5 7.5 0 0 1-1.6.9l-.3 1.6h-2.5l-.3-1.6a7.5 7.5 0 0 1-1.6-.9l-1.5.5L6.5 14l1.2-.9a7 7 0 0 1 0-1.8L6.5 10l1.2-2.1 1.5.5a7.5 7.5 0 0 1 1.6-.9l.3-1.6h2.5l.3 1.6a7.5 7.5 0 0 1 1.6.9l1.5-.5 1.2 2.1-1.2.9a7 7 0 0 1 0 2.6Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>Settings &amp; Data</button>
+      <div class="sidebar-note"><strong>Desktop development platform</strong>Wearable product is a separate deployment target.</div>
+    </aside>
+    <main class="main">
+      <header class="header">
+        <div class="header-copy"><span class="header-accent"></span><div><h1 id="viewTitle">Live Capture</h1><div class="header-caption">Your real-time motion workspace</div></div></div>
+        <div class="status-pill" id="systemStatus" data-state="ready"><span class="dot"></span><span id="headerStatus">SYSTEM READY</span></div>
+      </header>
+
+      <div class="view active grid-2" data-view="capture">
+        <div class="card">
+          <h2>Live camera feed <span id="cameraFeedLabel" style="margin-left:auto;color:var(--muted);font-size:9px;letter-spacing:.6px;font-weight:500">WAITING FOR CAMERA</span></h2>
+          <div class="camera-frame" id="cameraFrame">
+            <canvas id="cameraPreview" aria-label="Live camera preview"></canvas>
+            <canvas id="landmarkOverlay"></canvas>
+            <span class="camera-corner tl"></span><span class="camera-corner tr"></span><span class="camera-corner bl"></span><span class="camera-corner br"></span>
+            <div class="camera-hud camera-hud-left"><span class="dot"></span><span id="cameraHudState">STANDBY</span></div>
+            <div class="camera-hud camera-hud-right">LANDMARK OVERLAY</div>
+            <div id="cameraMessage" class="camera-message">Capture is stopped. Press Start capture.</div>
+          </div>
+          <div class="controls">
+            <button class="cmd primary" id="btnStartCapture">Start capture</button>
+            <button class="cmd danger" id="btnStopCapture">Stop capture</button>
+            <button class="cmd" id="btnStartRecord">Record session</button>
+            <button class="cmd danger" id="btnStopRecord">Stop record</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Capture status</h2>
+          <div class="rows">
+            <div class="row"><span>Camera</span><b id="capCamera" class="off">STOPPED</b></div>
+            <div class="row"><span>Hands</span><b id="capHands">0</b></div>
+            <div class="row"><span>Landmarks</span><b id="capLandmarks">0</b></div>
+            <div class="row"><span>Pose confidence</span><b id="capConf">—</b></div>
+            <div class="row"><span>Experimental sign</span><b id="capSign" class="off">—</b></div>
+          </div>
+          <p class="honest">Detected landmarks are not a completed KSL or ASL translation.</p>
+          <div class="metrics" style="grid-template-columns:1fr 1fr">
+            <div class="metric"><span>FPS</span><strong id="capFps">—</strong></div>
+            <div class="metric"><span>Latency</span><strong id="capLat">—</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view translate-grid" data-view="translate">
+        <div class="card">
+          <h2>Speech or text to signs</h2>
+          <div class="translate-content">
+            <label class="field" for="speechInput">English input
+              <textarea id="speechInput" rows="4" maxlength="500" placeholder="Type a short phrase, or use voice input"></textarea>
+            </label>
+            <details class="vocabulary-browser">
+              <summary id="vocabularySummary">Browse recorded words</summary>
+              <div id="supportedVocabulary" class="vocabulary-list"></div>
+            </details>
+            <div class="controls translate-controls">
+              <button class="cmd" id="btnStartSpeech" title="Speak English into the input">Start voice input</button>
+              <button class="cmd danger" id="btnStopSpeech" disabled>Stop voice</button>
+              <button class="cmd primary" id="btnTranslateText">Translate &amp; sign</button>
+            </div>
+            <p class="translation-status" id="translationStatus" aria-live="polite">Ready for text input or Windows voice dictation.</p>
+            <div class="word-map" id="translationWords" aria-live="polite"></div>
+            <section class="live-sign-panel">
+              <div class="live-sign-heading"><h3>Live sign to text</h3><label class="speech-toggle"><input id="liveSpeechEnabled" type="checkbox" checked> Speak recognized signs</label></div>
+              <div class="live-sign-text" id="liveSignText" aria-live="polite">Waiting for a recognized sign</div>
+              <div class="controls"><button class="cmd" id="btnClearTranscript">Clear transcript</button></div>
+              <p class="honest">Experimental single-word recognition from the live camera. Not continuous sentence translation.</p>
+            </section>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Signing avatar <span id="avatarWordLabel" class="avatar-word-label">READY</span></h2>
+          <div class="canvas-wrap sign-avatar-stage"><canvas id="signingAvatarCanvas" aria-label="Recorded sign landmark avatar playback"></canvas></div>
+          <div class="controls">
+            <button class="cmd" id="btnOpen3dAvatar">Open Avatar Studio</button>
+            <button class="cmd primary" id="btnPlaySigns" disabled>Play signs</button>
+            <button class="cmd danger" id="btnStopSigns" disabled>Stop</button>
+            <progress id="signProgress" max="1" value="0" aria-label="Sign playback progress"></progress>
+          </div>
+          <p class="note" id="avatarStatus" aria-live="polite">Enter a short phrase to check the available recorded vocabulary.</p>
+        </div>
+      </div>
+
+      <div class="view grid-2" data-view="motion">
+        <div class="card">
+          <h2>Live movement skeleton</h2>
+          <div class="canvas-wrap"><canvas id="motionCanvas"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Motion processing</h2>
+          <div class="rows">
+            <div class="row"><span>Filter</span><b id="motFilter">ONE EURO</b></div>
+            <div class="row"><span>Sequence</span><b id="motSeq">0</b></div>
+            <div class="row"><span>Energy</span><b id="motEnergy">0</b></div>
+            <div class="row"><span>Buffer</span><b id="motBuf">0</b></div>
+            <div class="row"><span>Filter time</span><b id="motMs">—</b></div>
+          </div>
+          <p class="note">Landmarks are smoothed, then stored as motion frames for playback and the Blender bridge.</p>
+        </div>
+      </div>
+
+      <div class="view grid-2" data-view="avatar">
+        <div class="card">
+          <h2>Full-body signing avatar</h2>
+          <div class="canvas-wrap"><canvas id="avatarCanvas"></canvas></div>
+        </div>
+        <div class="card">
+          <h2>Blender bridge</h2>
+          <div class="rows">
+            <div class="row"><span>Stream</span><b id="blStatus" class="off">STOPPED</b></div>
+            <div class="row"><span>Target</span><b id="blTarget">127.0.0.1:5005</b></div>
+            <div class="row"><span>Frames sent</span><b id="blFrames">0</b></div>
+            <div class="row"><span>Send time</span><b id="blMs">—</b></div>
+            <div class="row"><span>Last error</span><b id="blErr" class="off">NONE</b></div>
+          </div>
+          <div class="controls">
+            <button class="cmd" id="btnStartBlender">Open Blender avatar</button>
+            <button class="cmd danger" id="btnStopBlender">Stop stream</button>
+          </div>
+          <p class="note">This low-poly 2D character follows live body landmarks and recorded hand movement. Use the optional Blender bridge to stream frames to an external rig.</p>
+        </div>
+      </div>
+
+      <div class="view grid-2" data-view="monitor">
+        <div class="card">
+          <h2>Component status</h2>
+          <div class="rows">
+            <div class="row"><span>Vision</span><b id="monVision" class="off">STOPPED</b></div>
+            <div class="row"><span>Landmarks</span><b id="monLandmarks" class="off">IDLE</b></div>
+            <div class="row"><span>Motion</span><b id="monMotion" class="off">IDLE</b></div>
+            <div class="row"><span>Blender</span><b id="monBlender" class="off">STOPPED</b></div>
+            <div class="row"><span>Classifier</span><b id="monClass" class="off">—</b></div>
+            <div class="row"><span>Language / speech</span><b class="off">STANDBY</b></div>
+          </div>
+          <p class="honest" id="monNote">Language intelligence is not claimed as working. Current milestone is stable camera-to-avatar motion.</p>
+        </div>
+        <div class="card">
+          <h2>Performance</h2>
+          <div class="metrics" style="grid-template-columns:1fr 1fr">
+            <div class="metric"><span>FPS</span><strong id="monFps">—</strong></div>
+            <div class="metric"><span>Frame latency</span><strong id="monLat">—</strong></div>
+            <div class="metric"><span>Filter ms</span><strong id="monFilt">—</strong></div>
+            <div class="metric"><span>Frames</span><strong id="monCount">0</strong></div>
+          </div>
+          <div class="log" id="errorLog">No errors reported.</div>
+        </div>
+      </div>
+
+      <div class="view grid-2" data-view="settings">
+        <div class="card">
+          <h2>Configuration</h2>
+          <label class="field">Camera index
+            <input id="setCamera" type="number" min="0" value="0">
+          </label>
+          <label class="field">Sign language target
+            <select id="setLanguage">
+              <option value="KSL" selected>Kenyan Sign Language (KSL)</option>
+              <option value="ASL" disabled>American Sign Language (ASL, unavailable)</option>
+            </select>
+          </label>
+          <label class="field">One Euro min cutoff
+            <input id="setCutoff" type="number" step="0.1" value="1.2">
+          </label>
+          <label class="field">One Euro beta
+            <input id="setBeta" type="number" step="0.01" value="0.05">
+          </label>
+          <label class="field">Blender host
+            <input id="setHost" value="127.0.0.1">
+          </label>
+          <label class="field">Blender UDP port
+            <input id="setPort" type="number" value="5005">
+          </label>
+          <div class="controls">
+            <button class="cmd" id="btnApplySettings">Apply settings</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Session data</h2>
+          <p class="note" id="sessionNote">Session recordings write JSONL motion frames under data/sessions. Classifier metrics stay experimental.</p>
+          <div class="log" id="sessionLog">No session file yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+<script>
+const TITLES = {
+  capture: "Live Capture",
+  translate: "Aurora Translate",
+  motion: "Motion Lab",
+  avatar: "Avatar Studio",
+  monitor: "System Monitor",
+  settings: "Settings & Data"
+};
+const CAPTIONS = {
+  capture: "Your real-time motion workspace",
+  translate: "Speech and text to signs, live signs to speech",
+  motion: "Inspect landmark filtering and movement data",
+  avatar: "Preview retargeted motion and stream health",
+  monitor: "Track live pipeline components and performance",
+  settings: "Configure your capture and session environment"
+};
+const HAND_LINKS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+const POSE_LINKS = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+let latestOverlay = null;
+let latestMotion = null;
+let latestMetrics = {};
+let latestComponents = {};
+let lastSpokenSign = "";
+let noSignFrames = 0;
+let liveTranscript = [];
+let signingFrames = [];
+let signingFrameIndex = 0;
+let signingPlaybackTimer = null;
+let latestCameraFrame = null;
+let cameraFrameDecodePending = false;
+let cameraPreviewGeneration = 0;
+let hasCameraPreviewFrame = false;
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach((el) => el.classList.toggle("active", el.id === id));
+}
+function setBootProgress(progress, stage, narrative) {
+  document.getElementById("bootFill").style.width = progress + "%";
+  if (stage) document.getElementById("bootStage").textContent = stage;
+  if (narrative) document.getElementById("bootNarrative").textContent = narrative;
+}
+function updateHandoff(progress) {
+  document.getElementById("handoffFill").style.width = progress + "%";
+}
+function setPlatformTab(name) {
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.view === name));
+  document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.dataset.view === name));
+  document.getElementById("viewTitle").textContent = TITLES[name] || name;
+  document.querySelector(".header-caption").textContent = CAPTIONS[name] || "";
+  requestAnimationFrame(redrawCanvases);
+}
+function tone(el, ok, warn) {
+  el.classList.remove("off", "warn", "bad");
+  if (warn) el.classList.add("warn");
+  else if (!ok) el.classList.add("off");
+}
+function sizeCanvas(canvas, rect, ratio) {
+  const width = Math.round(rect.width * ratio);
+  const height = Math.round(rect.height * ratio);
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+}
+function drawNextCameraFrame() {
+  if (cameraFrameDecodePending || !latestCameraFrame) return;
+  const frame = latestCameraFrame;
+  const generation = cameraPreviewGeneration;
+  latestCameraFrame = null;
+  cameraFrameDecodePending = true;
+  const image = new Image();
+  image.onload = () => {
+    if (generation === cameraPreviewGeneration) {
+      const canvas = document.getElementById("cameraPreview");
+      if (canvas.width !== image.naturalWidth) canvas.width = image.naturalWidth;
+      if (canvas.height !== image.naturalHeight) canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        console.error("Could not draw the live camera frame: 2D canvas is unavailable.");
+      } else {
+        context.drawImage(image, 0, 0);
+        hasCameraPreviewFrame = true;
+        document.getElementById("cameraMessage").hidden = true;
+      }
+    }
+    cameraFrameDecodePending = false;
+    drawNextCameraFrame();
+  };
+  image.onerror = () => {
+    console.error("Could not decode a live camera frame.");
+    cameraFrameDecodePending = false;
+    drawNextCameraFrame();
+  };
+  image.src = "data:image/jpeg;base64," + frame;
+}
+function updateCameraPreview(frame) {
+  latestCameraFrame = frame;
+  drawNextCameraFrame();
+}
+function drawLandmarks(canvas, overlay, joints, fitCameraImage = false) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  sizeCanvas(canvas, rect, ratio);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  if (!rect.width || !rect.height) return;
+  let imageWidth = 1;
+  let imageHeight = 1;
+  let imageOffsetX = 0;
+  let imageOffsetY = 0;
+  if (fitCameraImage) {
+    const image = document.getElementById("cameraPreview");
+    const sourceWidth = image.naturalWidth || 640;
+    const sourceHeight = image.naturalHeight || 480;
+    const scale = canvas.id === "landmarkOverlay"
+      ? Math.max(rect.width / sourceWidth, rect.height / sourceHeight)
+      : Math.min(rect.width / sourceWidth, rect.height / sourceHeight);
+    imageWidth = sourceWidth * scale;
+    imageHeight = sourceHeight * scale;
+    imageOffsetX = (rect.width - imageWidth) / 2;
+    imageOffsetY = (rect.height - imageHeight) / 2;
+  }
+  const pointX = (x) => fitCameraImage ? imageOffsetX + x * imageWidth : x * rect.width;
+  const pointY = (y) => fitCameraImage ? imageOffsetY + y * imageHeight : y * rect.height;
+  function group(points, links, color, radius = 2.4, lineWidth = 1.6, showPoints = true) {
+    if (!points || !points.length) return;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = lineWidth;
+    (links || []).forEach(([a, b]) => {
+      if (!points[a] || !points[b]) return;
+      ctx.beginPath();
+      ctx.moveTo(pointX(points[a].x), pointY(points[a].y));
+      ctx.lineTo(pointX(points[b].x), pointY(points[b].y));
+      ctx.stroke();
+    });
+    if (!showPoints) return;
+    points.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(pointX(p.x), pointY(p.y), radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  if (overlay) {
+    group(overlay.pose, POSE_LINKS, "#00e5ff");
+    group(overlay.left_hand, HAND_LINKS, "#9dff57");
+    group(overlay.right_hand, HAND_LINKS, "#7ae9ff");
+    group(overlay.face, overlay.face_connections, "#72e5ed", 1.05, 0.7);
+    group(overlay.face, overlay.lip_connections, "#ffbd79", 0, 1.5, false);
+  }
+  if (joints) {
+    ctx.fillStyle = "#5ce1d4";
+    Object.values(joints).forEach((xyz) => {
+      ctx.beginPath();
+      ctx.arc(pointX(xyz[0]), pointY(xyz[1]), 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+}
+function buildSigningPose(signLabel) {
+  const base = {
+    nose: [0.5, 0.18, 0],
+    left_shoulder: [0.38, 0.34, 0],
+    right_shoulder: [0.62, 0.34, 0],
+    left_elbow: [0.28, 0.48, 0],
+    right_elbow: [0.72, 0.48, 0],
+    left_wrist: [0.18, 0.6, 0],
+    right_wrist: [0.82, 0.6, 0],
+    left_hip: [0.42, 0.72, 0],
+    right_hip: [0.58, 0.72, 0],
+    left_knee: [0.45, 0.84, 0],
+    right_knee: [0.55, 0.84, 0],
+    left_ankle: [0.44, 0.96, 0],
+    right_ankle: [0.56, 0.96, 0],
+  };
+  if (!signLabel) return base;
+  const seed = Array.from(signLabel).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const offset = ((seed % 9) - 4) / 18;
+  const spread = ((seed % 5) + 1) * 0.04;
+  base.left_elbow[0] = 0.18 + spread;
+  base.right_elbow[0] = 0.82 - spread;
+  base.left_wrist[0] = 0.08 + offset;
+  base.right_wrist[0] = 0.92 - offset;
+  base.left_wrist[1] = 0.58 + ((seed % 3) * 0.07);
+  base.right_wrist[1] = 0.58 + ((seed % 3) * 0.07);
+  base.nose[1] = 0.16 + ((seed % 4) * 0.012);
+  return base;
+}
+function drawAvatarFallback(canvas, motion, overlay) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  sizeCanvas(canvas, rect, ratio);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = "#080e13";
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  if (!rect.width || !rect.height) return;
+  const pointX = (x) => x * rect.width;
+  const pointY = (y) => y * rect.height;
+  ctx.strokeStyle = "rgba(116,229,226,.055)";
+  ctx.lineWidth = 1;
+  for (let x = 24; x < rect.width; x += 32) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, rect.height);
+    ctx.stroke();
+  }
+  for (let y = 24; y < rect.height; y += 32) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(rect.width, y);
+    ctx.stroke();
+  }
+  const fallbackLabel = document.getElementById("capSign")?.textContent || "";
+  const map = motion && motion.joints ? motion.joints : buildSigningPose(fallbackLabel);
+  function pt(name) {
+    const j = map[name];
+    if (!j || !Number.isFinite(j[0]) || !Number.isFinite(j[1])) return null;
+    return [pointX(j[0]), pointY(j[1])];
+  }
+  function segment(pa, pb, color, width) {
+    if (!pa || !pb) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(pa[0], pa[1]);
+    ctx.lineTo(pb[0], pb[1]);
+    ctx.stroke();
+  }
+  const leftShoulder = pt("left_shoulder");
+  const rightShoulder = pt("right_shoulder");
+  const shoulderWidth = leftShoulder && rightShoulder
+    ? Math.hypot(rightShoulder[0] - leftShoulder[0], rightShoulder[1] - leftShoulder[1])
+    : rect.width * 0.22;
+  const unit = Math.max(24, shoulderWidth);
+  const skin = "#bd8061";
+  const skinLight = "#d6a184";
+  const shirt = "#197b7d";
+  const shirtLight = "#37a6a0";
+  const trousers = "#263943";
+  const trouserLight = "#3d5660";
+  const hipLeft = pt("left_hip"), hipRight = pt("right_hip");
+  const kneeLeft = pt("left_knee"), kneeRight = pt("right_knee");
+  const ankleLeft = pt("left_ankle"), ankleRight = pt("right_ankle");
+  const elbowLeft = pt("left_elbow"), elbowRight = pt("right_elbow");
+  const wristLeft = pt("left_wrist"), wristRight = pt("right_wrist");
+
+  segment(hipLeft, kneeLeft, trousers, unit * 0.19);
+  segment(kneeLeft, ankleLeft, trousers, unit * 0.15);
+  segment(hipRight, kneeRight, trousers, unit * 0.19);
+  segment(kneeRight, ankleRight, trousers, unit * 0.15);
+  segment(hipLeft, kneeLeft, trouserLight, unit * 0.025);
+  segment(hipRight, kneeRight, trouserLight, unit * 0.025);
+
+  function foot(ankle, direction) {
+    if (!ankle) return;
+    ctx.fillStyle = "#d8e0dc";
+    ctx.beginPath();
+    ctx.ellipse(ankle[0] + direction * unit * 0.09, ankle[1] + unit * 0.045, unit * 0.13, unit * 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#7acac0";
+    ctx.fillRect(ankle[0] - unit * 0.04, ankle[1] + unit * 0.015, unit * 0.1, unit * 0.018);
+  }
+  foot(ankleLeft, -1);
+  foot(ankleRight, 1);
+
+  segment(leftShoulder, elbowLeft, shirt, unit * 0.17);
+  segment(rightShoulder, elbowRight, shirt, unit * 0.17);
+
+  if (leftShoulder && rightShoulder && hipLeft && hipRight) {
+    const torso = ctx.createLinearGradient(leftShoulder[0], 0, rightShoulder[0], 0);
+    torso.addColorStop(0, "#155e67");
+    torso.addColorStop(0.5, shirt);
+    torso.addColorStop(1, "#216f71");
+    ctx.beginPath();
+    ctx.moveTo(leftShoulder[0] - unit * 0.1, leftShoulder[1] + unit * 0.035);
+    ctx.quadraticCurveTo(leftShoulder[0], leftShoulder[1] - unit * 0.06, leftShoulder[0] + unit * 0.07, leftShoulder[1]);
+    ctx.lineTo(rightShoulder[0] - unit * 0.07, rightShoulder[1]);
+    ctx.quadraticCurveTo(rightShoulder[0], rightShoulder[1] - unit * 0.06, rightShoulder[0] + unit * 0.1, rightShoulder[1] + unit * 0.035);
+    ctx.lineTo(hipRight[0] + unit * 0.055, hipRight[1]);
+    ctx.quadraticCurveTo((hipLeft[0] + hipRight[0]) / 2, hipRight[1] + unit * 0.07, hipLeft[0] - unit * 0.055, hipLeft[1]);
+    ctx.closePath();
+    ctx.fillStyle = torso;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(145,231,211,.32)";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.strokeStyle = shirtLight;
+    ctx.lineWidth = Math.max(1.5, unit * 0.018);
+    ctx.beginPath();
+    ctx.moveTo((leftShoulder[0] + rightShoulder[0]) / 2, leftShoulder[1] + unit * 0.025);
+    ctx.lineTo((hipLeft[0] + hipRight[0]) / 2, hipLeft[1] - unit * 0.04);
+    ctx.stroke();
+  }
+
+  segment(elbowLeft, wristLeft, skin, unit * 0.105);
+  segment(elbowRight, wristRight, skin, unit * 0.105);
+  for (const joint of [elbowLeft, elbowRight, wristLeft, wristRight]) {
+    if (!joint) continue;
+    ctx.beginPath();
+    ctx.fillStyle = skinLight;
+    ctx.arc(joint[0], joint[1], unit * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const nose = pt("nose");
+  if (nose && leftShoulder && rightShoulder) {
+    const headWidth = unit * 0.48;
+    const headHeight = unit * 0.66;
+    const centerY = nose[1] - headHeight * 0.12;
+    const headGradient = ctx.createLinearGradient(nose[0] - headWidth / 2, centerY, nose[0] + headWidth / 2, centerY);
+    headGradient.addColorStop(0, "#996247");
+    headGradient.addColorStop(0.48, skin);
+    headGradient.addColorStop(1, "#d49a79");
+    ctx.fillStyle = headGradient;
+    ctx.beginPath();
+    ctx.ellipse(nose[0], centerY, headWidth / 2, headHeight / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(39,25,22,.5)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.fillStyle = "#202b30";
+    ctx.beginPath();
+    ctx.ellipse(nose[0], centerY - headHeight * 0.18, headWidth * 0.49, headHeight * 0.26, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+    for (const eyeOffset of [-1, 1]) {
+      const eyeX = nose[0] + eyeOffset * headWidth * 0.19;
+      ctx.fillStyle = "#f0dfcb";
+      ctx.beginPath();
+      ctx.ellipse(eyeX, centerY - headHeight * 0.015, headWidth * 0.075, headHeight * 0.035, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#263238";
+      ctx.beginPath();
+      ctx.arc(eyeX, centerY - headHeight * 0.015, headWidth * 0.026, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "#714734";
+    ctx.lineWidth = Math.max(1.2, unit * 0.014);
+    ctx.beginPath();
+    ctx.moveTo(nose[0] - headWidth * 0.11, centerY + headHeight * 0.19);
+    ctx.quadraticCurveTo(nose[0], centerY + headHeight * 0.24, nose[0] + headWidth * 0.11, centerY + headHeight * 0.19);
+    ctx.stroke();
+  }
+
+  function hand(points) {
+    if (!points || points.length < 21 || !points.some((xyz) => Math.abs(xyz[0]) + Math.abs(xyz[1]) > 0.01)) return;
+    const handPoints = points.map((xyz) => [pointX(xyz[0]), pointY(xyz[1])]);
+    ctx.beginPath();
+    [0, 5, 9, 13, 17].forEach((index, position) => {
+      const [x, y] = handPoints[index];
+      if (position === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = skin;
+    ctx.fill();
+    ctx.strokeStyle = "#704a3a";
+    ctx.lineWidth = Math.max(1.1, unit * 0.012);
+    ctx.stroke();
+    ctx.lineCap = "round";
+    HAND_LINKS.forEach(([start, end]) => {
+      const a = handPoints[start], b = handPoints[end];
+      ctx.strokeStyle = "#704a3a";
+      ctx.lineWidth = Math.max(2.4, unit * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+      ctx.strokeStyle = skinLight;
+      ctx.lineWidth = Math.max(1.3, unit * 0.021);
+      ctx.beginPath();
+      ctx.moveTo(a[0], a[1]);
+      ctx.lineTo(b[0], b[1]);
+      ctx.stroke();
+    });
+  }
+  if (motion) {
+    hand(motion.left_hand);
+    hand(motion.right_hand);
+  }
+}
+function drawSigningAvatar(canvas, motion) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  sizeCanvas(canvas, rect, ratio);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  if (!rect.width || !rect.height) return;
+
+  const defaults = buildSigningPose("");
+  const names = Object.keys(defaults);
+  const joints = motion && motion.joints ? motion.joints : defaults;
+  const raw = {};
+  for (const name of names) {
+    const point = joints[name];
+    raw[name] = Array.isArray(point) &&
+      Number.isFinite(point[0]) && Number.isFinite(point[1]) &&
+      Math.abs(point[0]) < 4 && Math.abs(point[1]) < 4
+      ? point
+      : defaults[name];
+  }
+
+  const shoulderCenter = [
+    (raw.left_shoulder[0] + raw.right_shoulder[0]) / 2,
+    (raw.left_shoulder[1] + raw.right_shoulder[1]) / 2,
+  ];
+  const shoulderWidth = Math.max(0.01, Math.hypot(
+    raw.right_shoulder[0] - raw.left_shoulder[0],
+    raw.right_shoulder[1] - raw.left_shoulder[1],
+  ));
+  const top = raw.nose[1] - shoulderWidth * 0.55;
+  const bottom = Math.max(raw.left_ankle[1], raw.right_ankle[1]) + shoulderWidth * 0.18;
+  const bodyHeight = Math.max(shoulderWidth * 2.8, bottom - top);
+  const scaleY = Math.min(rect.height * 0.78 / bodyHeight, rect.width * 0.5 / bodyHeight);
+  const targetShoulderWidth = Math.min(rect.width * 0.38, bodyHeight * scaleY * 0.26);
+  const scaleX = targetShoulderWidth / shoulderWidth;
+  const mapPoint = (point) => [
+    rect.width / 2 + (point[0] - shoulderCenter[0]) * scaleX,
+    rect.height * 0.1 + (point[1] - top) * scaleY,
+  ];
+  const p = Object.fromEntries(names.map((name) => [name, mapPoint(raw[name])]));
+  const unit = shoulderWidth * scaleX;
+  const skin = "#995436";
+  const highlight = "#c27b51";
+  const shade = "#663721";
+  const shirt = "#e84e7d";
+  const shirtLight = "#ff87a5";
+  const shirtDark = "#b92e5b";
+  const pants = "#25242c";
+  const pantsLight = "#45424b";
+
+  const polygon = (points, color) => {
+    ctx.beginPath();
+    points.forEach(([x, y], index) => {
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+  const limb = (a, b, widthA, widthB, color, shine) => {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const nx = -dy / length;
+    const ny = dx / length;
+    polygon([
+      [a[0] + nx * widthA / 2, a[1] + ny * widthA / 2],
+      [b[0] + nx * widthB / 2, b[1] + ny * widthB / 2],
+      [b[0] - nx * widthB / 2, b[1] - ny * widthB / 2],
+      [a[0] - nx * widthA / 2, a[1] - ny * widthA / 2],
+    ], color);
+    ctx.strokeStyle = shine;
+    ctx.lineWidth = Math.max(1, unit * 0.018);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(a[0] + nx * widthA * 0.17, a[1] + ny * widthA * 0.17);
+    ctx.lineTo(b[0] + nx * widthB * 0.17, b[1] + ny * widthB * 0.17);
+    ctx.stroke();
+    for (const [point, width] of [[a, widthA], [b, widthB]]) {
+      ctx.beginPath();
+      ctx.arc(point[0], point[1], width * 0.48, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+  };
+  const circle = (x, y, radius, color) => {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
+
+  const backdrop = ctx.createRadialGradient(rect.width / 2, rect.height * 0.48, unit * 0.2, rect.width / 2, rect.height * 0.48, rect.height * 0.72);
+  backdrop.addColorStop(0, "#14171e");
+  backdrop.addColorStop(1, "#090d12");
+  ctx.fillStyle = backdrop;
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  ctx.beginPath();
+  ctx.ellipse(rect.width / 2, Math.min(rect.height * 0.94, p.left_ankle[1] + unit * 0.1), unit * 0.76, unit * 0.12, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,.38)";
+  ctx.fill();
+
+  limb(p.left_hip, p.left_knee, unit * 0.25, unit * 0.18, pants, pantsLight);
+  limb(p.left_knee, p.left_ankle, unit * 0.18, unit * 0.105, pants, pantsLight);
+  limb(p.right_hip, p.right_knee, unit * 0.25, unit * 0.18, pants, pantsLight);
+  limb(p.right_knee, p.right_ankle, unit * 0.18, unit * 0.105, pants, pantsLight);
+  for (const [ankle, direction] of [[p.left_ankle, -1], [p.right_ankle, 1]]) {
+    polygon([
+      [ankle[0] - unit * 0.045, ankle[1] - unit * 0.025],
+      [ankle[0] + direction * unit * 0.2, ankle[1] + unit * 0.005],
+      [ankle[0] + direction * unit * 0.2, ankle[1] + unit * 0.075],
+      [ankle[0] - unit * 0.035, ankle[1] + unit * 0.075],
+    ], "#d7cec2");
+  }
+
+  limb(p.left_shoulder, p.left_elbow, unit * 0.2, unit * 0.15, shirt, shirtLight);
+  limb(p.right_shoulder, p.right_elbow, unit * 0.2, unit * 0.15, shirt, shirtLight);
+  limb(p.left_elbow, p.left_wrist, unit * 0.12, unit * 0.085, skin, highlight);
+  limb(p.right_elbow, p.right_wrist, unit * 0.12, unit * 0.085, skin, highlight);
+
+  const headWidth = unit * 0.49;
+  const headHeight = unit * 0.65;
+  const head = [p.nose[0], p.nose[1] + headHeight * 0.24];
+  const neck = [p.nose[0], p.left_shoulder[1] - unit * 0.045];
+  polygon([
+    [p.left_shoulder[0] - unit * 0.1, p.left_shoulder[1]],
+    [p.left_shoulder[0] + unit * 0.04, p.left_shoulder[1] - unit * 0.07],
+    [neck[0] - unit * 0.13, neck[1]],
+    [neck[0] + unit * 0.13, neck[1]],
+    [p.right_shoulder[0] - unit * 0.04, p.right_shoulder[1] - unit * 0.07],
+    [p.right_shoulder[0] + unit * 0.1, p.right_shoulder[1]],
+    [p.right_hip[0] + unit * 0.105, p.right_hip[1]],
+    [p.left_hip[0] - unit * 0.105, p.left_hip[1]],
+  ], shirt);
+  polygon([
+    [p.left_shoulder[0] + unit * 0.04, p.left_shoulder[1] - unit * 0.07],
+    [neck[0] - unit * 0.13, neck[1]],
+    [neck[0], neck[1] + unit * 0.52],
+    [p.left_hip[0] - unit * 0.105, p.left_hip[1]],
+  ], shirtLight);
+  polygon([
+    [neck[0] + unit * 0.13, neck[1]],
+    [p.right_shoulder[0] - unit * 0.04, p.right_shoulder[1] - unit * 0.07],
+    [p.right_shoulder[0] + unit * 0.1, p.right_shoulder[1]],
+    [p.right_hip[0] + unit * 0.105, p.right_hip[1]],
+  ], shirtDark);
+  polygon([
+    [p.left_hip[0] - unit * 0.105, p.left_hip[1]],
+    [p.right_hip[0] + unit * 0.105, p.right_hip[1]],
+    [p.right_hip[0] + unit * 0.12, p.right_hip[1] + unit * 0.075],
+    [p.left_hip[0] - unit * 0.12, p.left_hip[1] + unit * 0.075],
+  ], shirtDark);
+  polygon([
+    [head[0] - unit * 0.09, head[1] + headHeight * 0.42],
+    [head[0] + unit * 0.09, head[1] + headHeight * 0.42],
+    [neck[0] + unit * 0.1, neck[1] + unit * 0.16],
+    [neck[0] - unit * 0.1, neck[1] + unit * 0.16],
+  ], skin);
+
+  for (const [x, y, radius] of [
+    [-0.48, -0.08, 0.34], [-0.4, -0.38, 0.34], [-0.18, -0.58, 0.32],
+    [0.16, -0.6, 0.34], [0.43, -0.4, 0.34], [0.5, -0.08, 0.33],
+    [-0.43, 0.2, 0.3], [0.43, 0.2, 0.3],
+  ]) {
+    circle(head[0] + x * headWidth, head[1] + y * headHeight, radius * headWidth, "#171313");
+  }
+  ctx.beginPath();
+  ctx.ellipse(head[0], head[1] + headHeight * 0.035, headWidth * 0.43, headHeight * 0.48, 0, 0, Math.PI * 2);
+  ctx.fillStyle = skin;
+  ctx.fill();
+  polygon([
+    [head[0] - headWidth * 0.42, head[1] - headHeight * 0.12],
+    [head[0] - headWidth * 0.28, head[1] - headHeight * 0.43],
+    [head[0] + headWidth * 0.12, head[1] - headHeight * 0.49],
+    [head[0] + headWidth * 0.4, head[1] - headHeight * 0.22],
+    [head[0] + headWidth * 0.1, head[1] - headHeight * 0.3],
+    [head[0] - headWidth * 0.2, head[1] - headHeight * 0.22],
+  ], "#171313");
+  for (const side of [-1, 1]) {
+    const eyeX = head[0] + side * headWidth * 0.19;
+    const eyeY = head[1] + headHeight * 0.015;
+    ctx.strokeStyle = "#271a17";
+    ctx.lineWidth = Math.max(1.3, unit * 0.016);
+    ctx.beginPath();
+    ctx.moveTo(eyeX - unit * 0.045, eyeY);
+    ctx.lineTo(eyeX + unit * 0.045, eyeY - unit * 0.005);
+    ctx.stroke();
+  }
+  polygon([
+    [head[0], head[1] + headHeight * 0.04],
+    [head[0] - unit * 0.025, head[1] + headHeight * 0.19],
+    [head[0] + unit * 0.035, head[1] + headHeight * 0.18],
+  ], highlight);
+  ctx.strokeStyle = shade;
+  ctx.lineWidth = Math.max(1.2, unit * 0.016);
+  ctx.beginPath();
+  ctx.moveTo(head[0] - unit * 0.05, head[1] + headHeight * 0.29);
+  ctx.quadraticCurveTo(head[0], head[1] + headHeight * 0.34, head[0] + unit * 0.05, head[1] + headHeight * 0.29);
+  ctx.stroke();
+
+  function drawNeutralHand(wrist, direction) {
+    const palm = [wrist[0] + direction * unit * 0.04, wrist[1] + unit * 0.09];
+    circle(palm[0], palm[1], unit * 0.065, skin);
+    for (let finger = -1; finger <= 2; finger += 1) {
+      const x = palm[0] + finger * unit * 0.035;
+      ctx.strokeStyle = highlight;
+      ctx.lineWidth = Math.max(2, unit * 0.025);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, palm[1] + unit * 0.035);
+      ctx.lineTo(x + direction * unit * 0.018, palm[1] + unit * (0.1 + (finger === 0 ? 0.02 : 0)));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = skin;
+    ctx.lineWidth = Math.max(2.5, unit * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(palm[0] + direction * unit * 0.04, palm[1]);
+    ctx.lineTo(palm[0] + direction * unit * 0.095, palm[1] - unit * 0.035);
+    ctx.stroke();
+  }
+  function drawHand(points, wrist, direction) {
+    if (!Array.isArray(points) || points.length < 21 || !points[0] || !wrist) {
+      drawNeutralHand(wrist, direction);
+      return;
+    }
+    const wristRaw = points[0];
+    const maxReach = shoulderWidth * 0.9;
+    const spread = points.some((point) =>
+      point && Number.isFinite(point[0]) && Number.isFinite(point[1]) &&
+      Math.hypot(point[0] - wristRaw[0], point[1] - wristRaw[1]) > shoulderWidth * 0.03);
+    if (!spread) {
+      drawNeutralHand(wrist, direction);
+      return;
+    }
+    const mapped = points.map((point) => {
+      if (!point || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) return wrist;
+      const dx = Math.max(-maxReach, Math.min(maxReach, point[0] - wristRaw[0]));
+      const dy = Math.max(-maxReach, Math.min(maxReach, point[1] - wristRaw[1]));
+      return [wrist[0] + dx * scaleX, wrist[1] + dy * scaleY];
+    });
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const [start, end] of HAND_LINKS) {
+      ctx.strokeStyle = shade;
+      ctx.lineWidth = Math.max(2, unit * 0.038);
+      ctx.beginPath();
+      ctx.moveTo(mapped[start][0], mapped[start][1]);
+      ctx.lineTo(mapped[end][0], mapped[end][1]);
+      ctx.stroke();
+      ctx.strokeStyle = highlight;
+      ctx.lineWidth = Math.max(1.2, unit * 0.021);
+      ctx.beginPath();
+      ctx.moveTo(mapped[start][0], mapped[start][1]);
+      ctx.lineTo(mapped[end][0], mapped[end][1]);
+      ctx.stroke();
+    }
+  }
+  if (motion) {
+    drawHand(motion.left_hand, p.left_wrist, -1);
+    drawHand(motion.right_hand, p.right_wrist, 1);
+  } else {
+    drawNeutralHand(p.left_wrist, -1);
+    drawNeutralHand(p.right_wrist, 1);
+  }
+}
+function drawAvatar(canvas, motion) {
+  drawSigningAvatar(canvas, motion);
+}
+function fmt(value, digits) {
+  return Number.isFinite(value) ? value.toFixed(digits) : "—";
+}
+function speakRecognizedSign(sign) {
+  if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") {
+    console.error("Text-to-speech is not available in this browser.");
+    return;
+  }
+  try {
+    const spokenText = sign.replace(/[_-]+/g, " ").trim();
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.onerror = (event) => {
+      console.error("Could not speak recognized sign:", event.error);
+    };
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.error("Could not speak recognized sign:", error);
+  }
+}
+function redrawCanvases() {
+  const activeView = document.querySelector(".view.active")?.dataset.view;
+  if (latestOverlay && activeView === "capture") {
+    drawLandmarks(document.getElementById("landmarkOverlay"), latestOverlay, null, true);
+  }
+  if (latestOverlay && activeView === "motion") {
+    drawLandmarks(document.getElementById("motionCanvas"), latestOverlay, latestMotion && latestMotion.joints, true);
+  }
+  if (activeView === "avatar") drawAvatar(document.getElementById("avatarCanvas"), latestMotion, latestOverlay);
+  if (activeView === "translate" && signingFrames.length) {
+    drawAvatar(document.getElementById("signingAvatarCanvas"), signingFrames[signingFrameIndex] || signingFrames[0], null);
+  }
+}
+function setState(frame, overlay, motion, metrics, components) {
+  latestOverlay = overlay;
+  latestMotion = motion;
+  latestMetrics = metrics || {};
+  latestComponents = components || latestComponents;
+  const cameraOn = Boolean(latestMetrics.camera ?? latestComponents.vision === "LIVE");
+  const message = document.getElementById("cameraMessage");
+  if (frame && cameraOn) {
+    updateCameraPreview(frame);
+  } else if (!cameraOn) {
+    latestCameraFrame = null;
+    cameraPreviewGeneration += 1;
+  }
+  redrawCanvases();
+  const m = latestMetrics;
+  const cameraFrame = document.getElementById("cameraFrame");
+  cameraFrame.classList.toggle("is-live", cameraOn);
+  document.getElementById("cameraHudState").textContent = cameraOn ? "LIVE" : "STANDBY";
+  document.getElementById("cameraFeedLabel").textContent = cameraOn ? "LIVE FEED" : "WAITING FOR CAMERA";
+  document.getElementById("capCamera").textContent = cameraOn ? "LIVE" : "STOPPED";
+  tone(document.getElementById("capCamera"), cameraOn);
+  document.getElementById("capHands").textContent = m.hands ?? 0;
+  document.getElementById("capLandmarks").textContent = m.landmarks ?? 0;
+  document.getElementById("capConf").textContent = Number.isFinite(m.confidence) ? m.confidence.toFixed(1) + "%" : "—";
+  const signDisplay = document.getElementById("capSign");
+  if (m.recognition_status === "recognized" && m.sign) {
+    noSignFrames = 0;
+    signDisplay.textContent = m.sign;
+    tone(signDisplay, true, false);
+    if (m.sign !== lastSpokenSign) {
+      lastSpokenSign = m.sign;
+      liveTranscript.push(m.sign.replace(/[_-]+/g, " ").trim());
+      liveTranscript = liveTranscript.slice(-24);
+      document.getElementById("liveSignText").textContent = liveTranscript.join(" ");
+      if (document.getElementById("liveSpeechEnabled").checked) speakRecognizedSign(m.sign);
+    }
+  } else if (!m.camera) {
+    noSignFrames = 0;
+    lastSpokenSign = "";
+    signDisplay.textContent = "—";
+    tone(signDisplay, false, false);
+  } else if (m.hands === 0 || m.recognition_status === "idle") {
+    noSignFrames += 1;
+    if (noSignFrames >= 15) {
+      lastSpokenSign = "";
+      signDisplay.textContent = "—";
+      tone(signDisplay, false, false);
+    }
+  } else {
+    noSignFrames = 0;
+  }
+  document.getElementById("capFps").textContent = Number.isFinite(m.fps) ? Math.round(m.fps) : "—";
+  document.getElementById("capLat").textContent = Number.isFinite(m.latency_ms) ? Math.round(m.latency_ms) + "ms" : "—";
+  document.getElementById("motSeq").textContent = m.sequence ?? (motion && motion.sequence) ?? 0;
+  document.getElementById("motEnergy").textContent = fmt(m.motion, 4);
+  document.getElementById("motBuf").textContent = (motion && motion.sequence) ? Math.min(motion.sequence, 180) : 0;
+  document.getElementById("motMs").textContent = Number.isFinite(m.filter_ms) ? m.filter_ms.toFixed(2) + "ms" : "—";
+  document.getElementById("monFps").textContent = Number.isFinite(m.fps) ? Math.round(m.fps) : "—";
+  document.getElementById("monLat").textContent = Number.isFinite(m.latency_ms) ? Math.round(m.latency_ms) + "ms" : "—";
+  document.getElementById("monFilt").textContent = Number.isFinite(m.filter_ms) ? m.filter_ms.toFixed(2) : "—";
+  applyComponents(latestComponents);
+}
+function applyComponents(c) {
+  if (!c) return;
+  document.getElementById("monVision").textContent = c.vision || "STOPPED";
+  document.getElementById("monLandmarks").textContent = c.landmarks || "IDLE";
+  document.getElementById("monMotion").textContent = c.motion || "IDLE";
+  tone(document.getElementById("monVision"), c.vision === "LIVE");
+  tone(document.getElementById("monLandmarks"), c.landmarks === "TRACKING");
+  tone(document.getElementById("monMotion"), c.motion === "ACTIVE");
+  const bl = c.blender || {};
+  document.getElementById("blStatus").textContent = bl.label || "STOPPED";
+  tone(document.getElementById("blStatus"), bl.enabled && !bl.last_error, !!bl.last_error);
+  document.getElementById("blTarget").textContent = (bl.host || "127.0.0.1") + ":" + (bl.port || 5005);
+  document.getElementById("blFrames").textContent = bl.frames_sent || 0;
+  document.getElementById("blMs").textContent = bl.last_send_ms ? bl.last_send_ms + "ms" : "—";
+  document.getElementById("blErr").textContent = bl.last_error || "NONE";
+  tone(document.getElementById("blErr"), !bl.last_error, !!bl.last_error);
+  document.getElementById("monBlender").textContent = bl.label || "STOPPED";
+  document.getElementById("monClass").textContent = c.classifier || "—";
+  tone(document.getElementById("monClass"), c.classifier === "LOADED", c.classifier !== "LOADED");
+  document.getElementById("monCount").textContent = c.frames_processed || 0;
+  document.querySelector('[data-view="monitor"] .row:nth-child(6) b').textContent = (c.language || "STANDBY") + " / " + (c.speech || "STANDBY");
+  document.getElementById("monNote").textContent = c.language_note || "";
+  const errors = [c.camera_error, c.mediapipe_error, c.model_error, bl.last_error].filter(Boolean);
+  const systemStatus = document.getElementById("systemStatus");
+  systemStatus.dataset.state = c.camera_error || c.mediapipe_error || bl.last_error
+    ? "error"
+    : c.vision === "LIVE" && c.classifier !== "LOADED" ? "warn"
+    : c.vision === "LIVE" ? "live" : "ready";
+  document.getElementById("headerStatus").textContent = c.camera_error || c.mediapipe_error
+    ? "CAMERA ISSUE"
+    : c.vision === "LIVE" ? "CAPTURE LIVE" : "LAB READY";
+  const recordingButton = document.getElementById("btnStartRecord");
+  recordingButton.classList.toggle("is-active", !!c.recording);
+  recordingButton.setAttribute("aria-pressed", String(!!c.recording));
+  recordingButton.textContent = c.recording ? "Recording…" : "Record session";
+  document.getElementById("cameraFrame").classList.toggle("is-live", c.vision === "LIVE");
+  document.getElementById("cameraHudState").textContent = c.vision === "LIVE" ? "LIVE" : "STANDBY";
+  document.getElementById("cameraFeedLabel").textContent = c.vision === "LIVE" ? "LIVE FEED" : "WAITING FOR CAMERA";
+  const cameraMessage = document.getElementById("cameraMessage");
+  if (c.vision === "LIVE" && !hasCameraPreviewFrame) {
+    cameraMessage.textContent = "Acquiring camera feed…";
+    cameraMessage.hidden = false;
+  }
+  document.getElementById("errorLog").textContent = errors.length ? errors.join("\n") : "No errors reported.";
+  if (c.record_path) document.getElementById("sessionLog").textContent = c.record_path;
+  if (c.config) {
+    document.getElementById("setCamera").value = c.config.camera_index;
+    document.getElementById("setLanguage").value = c.config.language;
+    document.getElementById("setHost").value = c.config.blender_host;
+    document.getElementById("setPort").value = c.config.blender_port;
+  }
+  if (c.smoothing) {
+    document.getElementById("setCutoff").value = c.smoothing.min_cutoff;
+    document.getElementById("setBeta").value = c.smoothing.beta;
+  }
+}
+function setCameraStatus(text) {
+  const message = document.getElementById("cameraMessage");
+  message.hidden = false;
+  message.textContent = text;
+  setState(null, {pose:[], left_hand:[], right_hand:[]}, null, {camera:false}, latestComponents);
+}
+function bindPlatform() {
+  const call = (name) => () => { if (window.platform && window.platform[name]) window.platform[name](); };
+  document.getElementById("btnStartCapture").onclick = call("startCapture");
+  document.getElementById("btnStopCapture").onclick = call("stopCapture");
+  document.getElementById("btnStartRecord").onclick = call("startRecording");
+  document.getElementById("btnStopRecord").onclick = call("stopRecording");
+  document.getElementById("btnStartBlender").onclick = call("startBlender");
+  document.getElementById("btnOpen3dAvatar").onclick = () => setPlatformTab("avatar");
+  document.getElementById("btnStopBlender").onclick = call("stopBlender");
+  document.getElementById("btnApplySettings").onclick = () => {
+    if (!window.platform) return;
+    window.platform.applySettings(JSON.stringify({
+      camera_index: Number(document.getElementById("setCamera").value),
+      language: document.getElementById("setLanguage").value,
+      min_cutoff: Number(document.getElementById("setCutoff").value),
+      beta: Number(document.getElementById("setBeta").value),
+      blender_host: document.getElementById("setHost").value,
+      blender_port: Number(document.getElementById("setPort").value)
+    }));
+  };
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    button.addEventListener("click", () => setPlatformTab(button.dataset.view));
+  });
+}
+function applyTranslationResult(translation, avatar) {
+  const status = document.getElementById("translationStatus");
+  status.textContent = translation.status === "unavailable"
+    ? "No recorded words matched. Choose a supported word above and try again."
+    : translation.status === "partial"
+    ? "Some words matched. Unmatched words are skipped; choose supported words above."
+    : translation.message || "Vocabulary lookup complete.";
+  status.dataset.state = translation.status || "unavailable";
+  if (translation.supported_vocabulary) renderSupportedVocabulary(translation.supported_vocabulary);
+  const wordMap = document.getElementById("translationWords");
+  wordMap.replaceChildren();
+  (translation.sign_sequence || []).forEach((item) => {
+    const word = document.createElement("span");
+    word.className = "word-chip " + (item.status === "available" ? "available" : "unmapped");
+    word.textContent = item.source_token + " · " + item.status;
+    wordMap.appendChild(word);
+  });
+  signingFrames = (avatar.animation && avatar.animation.frames) || [];
+  signingFrameIndex = 0;
+  document.getElementById("btnPlaySigns").disabled = signingFrames.length === 0;
+  document.getElementById("btnStopSigns").disabled = true;
+  document.getElementById("signProgress").value = 0;
+  document.getElementById("avatarWordLabel").textContent = signingFrames[0]?.source_token || "NO MATCH";
+  document.getElementById("avatarStatus").textContent = signingFrames.length
+    ? "Recorded landmark samples are ready. Playback is vocabulary demonstration, not sentence-level KSL translation."
+    : "No recorded sign samples matched this input. Try a supported single word or short phrase.";
+  redrawCanvases();
+}
+function renderSupportedVocabulary(words) {
+  const list = document.getElementById("supportedVocabulary");
+  const summary = document.getElementById("vocabularySummary");
+  list.replaceChildren();
+  summary.textContent = "Browse recorded words (" + words.length + ")";
+  words.forEach((word) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cmd vocabulary-word";
+    button.textContent = word;
+    button.title = "Play the recorded sign for " + word;
+    button.addEventListener("click", () => {
+      document.getElementById("speechInput").value = word;
+      submitTranslation(true);
+    });
+    list.appendChild(button);
+  });
+}
+function submitTranslation(autoPlay) {
+  const text = document.getElementById("speechInput").value.trim();
+  if (!text) {
+    document.getElementById("translationStatus").textContent = "Enter or speak a word first.";
+    return;
+  }
+  if (!window.platform || !window.platform.translateText) {
+    document.getElementById("translationStatus").textContent = "The desktop translation bridge is not connected.";
+    return;
+  }
+  document.getElementById("translationStatus").textContent = "Looking up recorded sign samples…";
+  window.platform.translateText(text);
+  if (autoPlay) {
+    window.pendingAutoPlay = true;
+  }
+}
+function playSigningSequence() {
+  stopSigningSequence();
+  if (!signingFrames.length) return;
+  if (window.platform && window.platform.beginAvatarPlayback) window.platform.beginAvatarPlayback();
+  signingFrameIndex = 0;
+  document.getElementById("btnStopSigns").disabled = false;
+  document.getElementById("btnPlaySigns").disabled = true;
+  const drawNext = () => {
+    if (signingFrameIndex >= signingFrames.length) {
+      stopSigningSequence();
+      return;
+    }
+    const frame = signingFrames[signingFrameIndex];
+    document.getElementById("avatarWordLabel").textContent = frame.source_token;
+    document.getElementById("signProgress").value = signingFrameIndex / signingFrames.length;
+    drawAvatar(document.getElementById("signingAvatarCanvas"), frame, null);
+    if (window.platform && window.platform.sendAvatarFrame) {
+      window.platform.sendAvatarFrame(JSON.stringify(frame));
+    }
+    signingFrameIndex += 1;
+  };
+  drawNext();
+  signingPlaybackTimer = window.setInterval(drawNext, 80);
+}
+function stopSigningSequence() {
+  if (signingPlaybackTimer !== null) window.clearInterval(signingPlaybackTimer);
+  signingPlaybackTimer = null;
+  if (window.platform && window.platform.endAvatarPlayback) window.platform.endAvatarPlayback();
+  document.getElementById("btnPlaySigns").disabled = signingFrames.length === 0;
+  document.getElementById("btnStopSigns").disabled = true;
+}
+function bindAurora() {
+  document.getElementById("btnTranslateText").addEventListener("click", () => submitTranslation(true));
+  document.getElementById("btnPlaySigns").addEventListener("click", playSigningSequence);
+  document.getElementById("btnStopSigns").addEventListener("click", stopSigningSequence);
+  document.getElementById("btnClearTranscript").addEventListener("click", () => {
+    liveTranscript = [];
+    document.getElementById("liveSignText").textContent = "Waiting for a recognized sign";
+  });
+  document.getElementById("btnStopSpeech").addEventListener("click", () => {
+    if (window.platform && window.platform.stopVoiceCapture) window.platform.stopVoiceCapture();
+    document.getElementById("btnStartSpeech").disabled = false;
+    document.getElementById("btnStopSpeech").disabled = true;
+  });
+  document.getElementById("btnStartSpeech").addEventListener("click", () => {
+    if (window.platform && window.platform.startVoiceCapture) {
+      window.platform.startVoiceCapture();
+      document.getElementById("btnStartSpeech").disabled = true;
+      document.getElementById("btnStopSpeech").disabled = false;
+      setVoiceStatus("Listening with Windows speech recognition…");
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceStatus("Voice recognition is unavailable here. Type the words instead.");
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        document.getElementById("btnStartSpeech").disabled = true;
+        document.getElementById("btnStopSpeech").disabled = false;
+        setVoiceStatus("Listening for English speech…");
+      };
+      recognition.onresult = (event) => {
+        setVoiceTranscript(event.results[0][0].transcript);
+      };
+      recognition.onerror = (event) => {
+        setVoiceStatus("Voice input stopped: " + event.error + ". You can type instead.");
+      };
+      recognition.onend = () => {
+        document.getElementById("btnStartSpeech").disabled = false;
+        document.getElementById("btnStopSpeech").disabled = true;
+      };
+      recognition.start();
+    } catch (error) {
+      setVoiceStatus("Could not start voice input: " + error.message + ". Type the words instead.");
+    }
+  });
+}
+function setVoiceStatus(message) {
+  document.getElementById("translationStatus").textContent = message;
+  const listening = message.startsWith("Listening");
+  document.getElementById("btnStartSpeech").disabled = listening;
+  document.getElementById("btnStopSpeech").disabled = !listening;
+}
+function setVoiceTranscript(text) {
+  document.getElementById("speechInput").value = text;
+  document.getElementById("btnStartSpeech").disabled = false;
+  document.getElementById("btnStopSpeech").disabled = true;
+  submitTranslation(true);
+}
+function connectBridge() {
+  if (typeof qt === "undefined" || !qt.webChannelTransport) {
+    setTimeout(connectBridge, 80);
+    return;
+  }
+  new QWebChannel(qt.webChannelTransport, (channel) => {
+    window.platform = channel.objects.platform;
+    if (window.platform.getSupportedVocabulary) {
+      window.platform.getSupportedVocabulary((words) => renderSupportedVocabulary(JSON.parse(words)));
+    }
+  });
+}
+window.showScreen = showScreen;
+window.setBootProgress = setBootProgress;
+window.updateHandoff = updateHandoff;
+window.setPlatformTab = setPlatformTab;
+window.setState = setState;
+window.setCameraStatus = setCameraStatus;
+window.applyComponents = applyComponents;
+window.setTranslationResult = (translation, avatar) => {
+  applyTranslationResult(translation, avatar);
+  if (window.pendingAutoPlay) {
+    window.pendingAutoPlay = false;
+    playSigningSequence();
+  }
+};
+window.setVoiceStatus = setVoiceStatus;
+window.setVoiceTranscript = setVoiceTranscript;
+window.addEventListener("resize", () => {
+  redrawCanvases();
+});
+bindPlatform();
+bindAurora();
+connectBridge();
+</script>
+</body>
+</html>

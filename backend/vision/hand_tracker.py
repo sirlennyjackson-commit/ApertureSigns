@@ -1,13 +1,41 @@
+import os
 import cv2
-import mediapipe as mp
 import numpy as np
 import time
 from collections import deque
-from sign_recognizer import SignRecognizer
+from pathlib import Path
+import sys
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+_DLL_DIRECTORY_HANDLES = []
+if sys.platform == "win32":
+    # MediaPipe needs the MSVC runtime DLLs shipped with this project's PyQt6.
+    qt_runtime_dir = Path(sys.prefix) / "Lib" / "site-packages" / "PyQt6" / "Qt6" / "bin"
+    if qt_runtime_dir.is_dir():
+        _DLL_DIRECTORY_HANDLES.append(os.add_dll_directory(str(qt_runtime_dir)))
+
+try:
+    import mediapipe as mp
+except (ImportError, OSError) as exc:
+    mp = None
+    MEDIAPIPE_IMPORT_ERROR = exc
+else:
+    MEDIAPIPE_IMPORT_ERROR = None
+
+from backend.vision.sign_recognizer import SignRecognizer
 
 
 class ApertureTracker:
-    def __init__(self):
+    def __init__(self, apply_smoothing=True):
+        if mp is None:
+            raise RuntimeError(
+                f"MediaPipe is unavailable: {MEDIAPIPE_IMPORT_ERROR}. "
+                "Install the project requirements and restart."
+            )
         self.mp_holistic = mp.solutions.holistic
         self.mp_face_mesh = mp.solutions.face_mesh
 
@@ -18,6 +46,7 @@ class ApertureTracker:
             "pose": [],
             "face": [],
         }
+        self.apply_smoothing = apply_smoothing
         self.smoothing_alpha = 0.35
 
         self.holistic = self.mp_holistic.Holistic(
@@ -89,6 +118,10 @@ class ApertureTracker:
                     results.right_hand_landmarks.landmark
                 )
             ]
+
+        if not self.apply_smoothing:
+            self.history.append(data)
+            return data, results
 
         # Temporal landmark smoothing.
         # Keeps fast hand movement responsive while reducing jitter.
@@ -503,6 +536,12 @@ def draw_camera_card(canvas, frame, results, expanded=False):
         )
 
 def main():
+    if mp is None:
+        raise SystemExit(
+            f"ERROR: MediaPipe is unavailable: {MEDIAPIPE_IMPORT_ERROR}. "
+            "Install the project requirements and restart."
+        )
+
     tracker = ApertureTracker()
     recognizer = SignRecognizer(sequence_length=30)
     recognized_sign = "--"
@@ -561,6 +600,11 @@ def main():
         data, results = tracker.process(frame)
 
         recognition = recognizer.analyze(tracker.history)
+        prediction = recognition["prediction"]
+        recognized_sign = prediction["label"]
+        if prediction["status"] == "stabilizing":
+            recognized_sign = f"{prediction['candidate']}..."
+        recognition_confidence = prediction["confidence"]
 
         now = time.time()
         fps = 1.0 / max(now - previous, 0.001)
@@ -721,10 +765,10 @@ def main():
 
         cv2.putText(
             canvas,
-            "--",
+            recognized_sign,
             (rx + 15, ry + 90),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1.2,
+            0.8,
             (130, 220, 255),
             2,
             cv2.LINE_AA,

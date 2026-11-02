@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperture Signs — Motion Control Interface</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #05080d;
+            color: #eafcff;
+            font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Navigation Bar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+            background: linear-gradient(180deg, rgba(0, 229, 255, 0.03) 0%, transparent 100%);
+        }
+
+        .brand-title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #00e5ff;
+            text-transform: uppercase;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: #a8ff00;
+            font-family: monospace;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #a8ff00;
+            box-shadow: 0 0 8px #a8ff00;
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 24px 32px;
+            flex: 1;
+        }
+
+        /* Vision Feed Viewport */
+        .viewport-panel {
+            position: relative;
+            background: #020406;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .viewport-placeholder {
+            text-align: center;
+            color: #56636e;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        /* Telemetry Side Panel */
+        .telemetry-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .hud-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 229, 255, 0.12);
+            padding: 20px;
+            border-radius: 4px;
+        }
+
+        .hud-card-title {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #71808d;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .gesture-output {
+            font-size: 28px;
+            font-weight: 700;
+            color: #a8ff00;
+            letter-spacing: -0.5px;
+            text-shadow: 0 0 12px rgba(168, 255, 0, 0.2);
+        }
+
+        .keypoint-stream {
+            font-family: monospace;
+            font-size: 11px;
+            color: #00e5ff;
+            line-height: 1.6;
+            height: 120px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-title">Aperture Signs // Motion UI</div>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            PIPELINE READY
+        </div>
+    </header>
+
+    <main class="workspace">
+        <!-- Main Camera Feed / Hand Overlay Window -->
+        <section class="viewport-panel" id="viewport">
+            <div class="viewport-placeholder">
+                [ CAMERA FEED / VISION OVERLAY ACTIVE ]
+            </div>
+        </section>
+
+        <!-- Telemetry & Gesture Detection Sidebar -->
+        <aside class="telemetry-panel">
+            <div class="hud-card">
+                <div class="hud-card-title">Detected Gesture / Sign</div>
+                <div class="gesture-output" id="gestureText">WAITING...</div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-card-title">Landmark Telemetry (21 Points)</div>
+                <div class="keypoint-stream" id="keypointData">
+                    x: 0.000, y: 0.000, z: 0.000<br>
+                    x: 0.000, y: 0.000, z: 0.000<br>
+                    x: 0.000, y: 0.000, z: 0.000
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // Example JS function to update detected sign text dynamically
+        function updateGesture(signName) {
+            document.getElementById('gestureText').innerText = signName;
+        }
+
+        // Example JS function to update coordinate telemetry
+        function updateTelemetry(dataString) {
+            document.getElementById('keypointData').innerHTML = dataString;
+        }
+    </script>
+</body>
+</html>

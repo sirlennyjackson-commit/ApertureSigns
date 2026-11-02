@@ -1,6 +1,7 @@
 def speech_to_text(audio_text: str) -> str:
     """
-    Temporary speech-to-text layer.
-    Later this will connect to a real speech recognition engine.
+    Normalize text already supplied by the caller.
+
+    This function does not record or transcribe audio.
     """
-    return audio_text.strip()
+    return " ".join(audio_text.split())

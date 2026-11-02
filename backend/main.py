@@ -39,13 +39,12 @@ def pipeline(request: PipelineRequest):
     spoken_text = speech_to_text(request.text)
 
     translation = translate_to_ksl(spoken_text)
-
-    avatar = generate_avatar_sequence(
-        translation["sign_sequence"]
-    )
+    motion_sequences = translation.pop("_motion_sequences")
+    avatar = generate_avatar_sequence(translation["sign_sequence"], motion_sequences)
 
     return {
         "speech": spoken_text,
         "translation": translation,
         "avatar": avatar,
+        "signed_output": avatar.get("speech_output", spoken_text),
     }
