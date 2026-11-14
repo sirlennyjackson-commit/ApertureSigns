@@ -84,7 +84,13 @@ input, select {
 }
 .canvas-wrap { position: relative; height: calc(100% - 44px); min-height: 280px; background: #070b10; }
 .canvas-wrap canvas { width: 100%; height: 100%; display: block; }
-#avatarCanvas, #signingAvatarCanvas { touch-action: none; }
+#avatarCanvas, #signingAvatarCanvas {
+  touch-action: none;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(245,224,190,.34), transparent 52%),
+    radial-gradient(ellipse at 14% 18%, rgba(160,198,174,.2), transparent 42%),
+    linear-gradient(180deg, #34433f 0%, #56635a 62%, #87907b 100%);
+}
 .log { height: 180px; overflow: auto; margin: 0 14px 14px; padding: 10px; background: #0b1116; color: #9fb3bf; font: 11px Consolas, monospace; white-space: pre-wrap; }
 .honest { color: var(--warn); font-size: 11px; letter-spacing: .4px; padding: 0 14px 12px; }
 </style>
@@ -261,6 +267,8 @@ button.cmd.is-active { border-color: rgba(185,244,119,.3); color: var(--lime); b
 .row span { color: #93a4ad; }
 .row b { color: var(--lime); font-size: 9px; font-weight: 650; letter-spacing: .7px; overflow-wrap: anywhere; text-align: right; }
 .note { padding: 0 16px 15px; font-size: 11px; line-height: 1.65; }
+#settingsStatus[data-state="error"] { color: var(--danger); }
+#settingsStatus[data-state="success"] { color: var(--teal); }
 .honest { margin: 0; padding: 2px 16px 9px; font-size: 10px; line-height: 1.55; }
 label.field { padding: 8px 16px; font-size: 10px; letter-spacing: .2px; }
 input, select { margin-top: 6px; border-radius: 7px; padding: 9px 10px; font: inherit; }
@@ -451,7 +459,7 @@ button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
         </div>
         <div class="card">
           <h2>Signing avatar <span id="avatarWordLabel" class="avatar-word-label">READY</span></h2>
-          <div class="canvas-wrap sign-avatar-stage"><canvas id="signingAvatarCanvas" aria-label="Recorded sign landmark avatar playback"></canvas></div>
+          <div class="canvas-wrap sign-avatar-stage"><canvas id="signingAvatarCanvas" aria-label="Rigged 3D avatar during recorded sign playback"></canvas></div>
           <div class="controls">
             <button class="cmd" id="btnOpen3dAvatar">Open Avatar Studio</button>
             <button class="cmd primary" id="btnPlaySigns" disabled>Play signs</button>
@@ -483,7 +491,7 @@ button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
       <div class="view grid-2" data-view="avatar">
         <div class="card">
           <h2>Full-body signing avatar</h2>
-          <div class="canvas-wrap"><canvas id="avatarCanvas"></canvas></div>
+          <div class="canvas-wrap"><canvas id="avatarCanvas" aria-label="Rigged 3D avatar preview showing live motion"></canvas></div>
         </div>
         <div class="card">
           <h2>Blender bridge</h2>
@@ -498,7 +506,7 @@ button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
             <button class="cmd" id="btnStartBlender">Open Blender avatar</button>
             <button class="cmd danger" id="btnStopBlender">Stop stream</button>
           </div>
-          <p class="note">This low-poly 2D character follows live body landmarks and recorded hand movement. Use the optional Blender bridge to stream frames to an external rig.</p>
+          <p class="note">This rigged 3D avatar follows live arm/body landmarks and recorded hand movement. Some shirt creasing may appear in bent-arm poses. Use the optional Blender bridge to stream frames to a compatible external rig.</p>
         </div>
       </div>
 
@@ -531,29 +539,30 @@ button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
         <div class="card">
           <h2>Configuration</h2>
           <label class="field">Camera index
-            <input id="setCamera" type="number" min="0" value="0">
+            <input id="setCamera" type="number" min="0" max="2147483647" step="1" value="0" required>
           </label>
           <label class="field">Sign language target
-            <select id="setLanguage">
+            <select id="setLanguage" required>
               <option value="KSL" selected>Kenyan Sign Language (KSL)</option>
               <option value="ASL" disabled>American Sign Language (ASL, unavailable)</option>
             </select>
           </label>
           <label class="field">One Euro min cutoff
-            <input id="setCutoff" type="number" step="0.1" value="1.2">
+            <input id="setCutoff" type="number" min="0.01" step="any" value="1.2" required>
           </label>
           <label class="field">One Euro beta
-            <input id="setBeta" type="number" step="0.01" value="0.05">
+            <input id="setBeta" type="number" min="0" step="0.01" value="0.05" required>
           </label>
           <label class="field">Blender host
-            <input id="setHost" value="127.0.0.1">
+            <input id="setHost" value="127.0.0.1" required>
           </label>
           <label class="field">Blender UDP port
-            <input id="setPort" type="number" value="5005">
+            <input id="setPort" type="number" min="1" max="65535" step="1" value="5005" required>
           </label>
           <div class="controls">
             <button class="cmd" id="btnApplySettings">Apply settings</button>
           </div>
+          <p class="note" id="settingsStatus" role="status" aria-live="polite">Changes are saved only when you apply them.</p>
         </div>
         <div class="card">
           <h2>Session data</h2>
@@ -564,6 +573,9 @@ button.cmd:disabled { opacity: .42; cursor: not-allowed; transform: none; }
     </main>
   </div>
 </section>
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="avatar_viewer.js"></script>
 <script>
 const TITLES = {
   capture: "Live Capture",
@@ -597,6 +609,7 @@ let latestCameraFrame = null;
 let cameraFrameDecodePending = false;
 let cameraPreviewGeneration = 0;
 let hasCameraPreviewFrame = false;
+let settingsDirty = false;
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((el) => el.classList.toggle("active", el.id === id));
@@ -1216,7 +1229,13 @@ function drawSigningAvatar(canvas, motion) {
   }
 }
 function drawAvatar(canvas, motion) {
-  drawSigningAvatar(canvas, motion);
+  if (!window.ApertureAvatar) {
+    console.error("The 3D avatar viewer did not load.");
+    const status = document.getElementById("avatarStatus");
+    if (status) status.textContent = "3D avatar viewer unavailable. Check the local viewer files.";
+    return;
+  }
+  window.ApertureAvatar.update(canvas, motion);
 }
 function fmt(value, digits) {
   return Number.isFinite(value) ? value.toFixed(digits) : "—";
@@ -1246,8 +1265,11 @@ function redrawCanvases() {
     drawLandmarks(document.getElementById("motionCanvas"), latestOverlay, latestMotion && latestMotion.joints, true);
   }
   if (activeView === "avatar") drawAvatar(document.getElementById("avatarCanvas"), latestMotion, latestOverlay);
-  if (activeView === "translate" && signingFrames.length) {
-    drawAvatar(document.getElementById("signingAvatarCanvas"), signingFrames[signingFrameIndex] || signingFrames[0], null);
+  if (activeView === "translate") {
+    const frame = signingPlaybackTimer === null
+      ? null
+      : signingFrames[Math.max(0, signingFrameIndex - 1)] || null;
+    drawAvatar(document.getElementById("signingAvatarCanvas"), frame);
   }
 }
 function setState(frame, overlay, motion, metrics, components) {
@@ -1357,16 +1379,23 @@ function applyComponents(c) {
   }
   document.getElementById("errorLog").textContent = errors.length ? errors.join("\n") : "No errors reported.";
   if (c.record_path) document.getElementById("sessionLog").textContent = c.record_path;
-  if (c.config) {
+  if (c.config && !settingsDirty) {
     document.getElementById("setCamera").value = c.config.camera_index;
     document.getElementById("setLanguage").value = c.config.language;
     document.getElementById("setHost").value = c.config.blender_host;
     document.getElementById("setPort").value = c.config.blender_port;
   }
-  if (c.smoothing) {
+  if (c.smoothing && !settingsDirty) {
     document.getElementById("setCutoff").value = c.smoothing.min_cutoff;
     document.getElementById("setBeta").value = c.smoothing.beta;
   }
+}
+function setSettingsStatus(text, state) {
+  const status = document.getElementById("settingsStatus");
+  status.textContent = text;
+  status.dataset.state = state || "";
+  document.getElementById("btnApplySettings").disabled = state === "applying";
+  if (state === "success") settingsDirty = false;
 }
 function setCameraStatus(text) {
   const message = document.getElementById("cameraMessage");
@@ -1384,7 +1413,19 @@ function bindPlatform() {
   document.getElementById("btnOpen3dAvatar").onclick = () => setPlatformTab("avatar");
   document.getElementById("btnStopBlender").onclick = call("stopBlender");
   document.getElementById("btnApplySettings").onclick = () => {
-    if (!window.platform) return;
+    if (!window.platform || !window.platform.applySettings) {
+      setSettingsStatus("Settings are unavailable in this session.", "error");
+      return;
+    }
+    const controls = ["setCamera", "setLanguage", "setCutoff", "setBeta", "setHost", "setPort"]
+      .map((id) => document.getElementById(id));
+    const invalidControl = controls.find((control) => !control.checkValidity());
+    if (invalidControl) {
+      setSettingsStatus(invalidControl.validationMessage, "error");
+      invalidControl.focus();
+      return;
+    }
+    setSettingsStatus("Applying settings…", "applying");
     window.platform.applySettings(JSON.stringify({
       camera_index: Number(document.getElementById("setCamera").value),
       language: document.getElementById("setLanguage").value,
@@ -1394,6 +1435,12 @@ function bindPlatform() {
       blender_port: Number(document.getElementById("setPort").value)
     }));
   };
+  ["setCamera", "setLanguage", "setCutoff", "setBeta", "setHost", "setPort"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => {
+      settingsDirty = true;
+      setSettingsStatus("Unsaved changes.", "dirty");
+    });
+  });
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.addEventListener("click", () => setPlatformTab(button.dataset.view));
   });
@@ -1487,6 +1534,8 @@ function playSigningSequence() {
 function stopSigningSequence() {
   if (signingPlaybackTimer !== null) window.clearInterval(signingPlaybackTimer);
   signingPlaybackTimer = null;
+  const signingCanvas = document.getElementById("signingAvatarCanvas");
+  if (window.ApertureAvatar) window.ApertureAvatar.reset(signingCanvas);
   if (window.platform && window.platform.endAvatarPlayback) window.platform.endAvatarPlayback();
   document.getElementById("btnPlaySigns").disabled = signingFrames.length === 0;
   document.getElementById("btnStopSigns").disabled = true;
@@ -1573,6 +1622,7 @@ window.updateHandoff = updateHandoff;
 window.setPlatformTab = setPlatformTab;
 window.setState = setState;
 window.setCameraStatus = setCameraStatus;
+window.setSettingsStatus = setSettingsStatus;
 window.applyComponents = applyComponents;
 window.setTranslationResult = (translation, avatar) => {
   applyTranslationResult(translation, avatar);

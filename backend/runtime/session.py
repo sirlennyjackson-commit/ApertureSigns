@@ -30,7 +30,10 @@ class SessionConfig:
     beta: float = 0.05
     language: str = "KSL"
     avatar_blend_path: str = str(
-        Path.home() / "Desktop" / "Everything" / "APERTURE_SIGNS_AVATAR_V1.blend"
+        Path.home()
+        / "Desktop"
+        / "Aperture Signs Intergrated Avatar"
+        / "APERTURE_SIGNS_AVATAR_V1.blend"
     )
 
 
@@ -118,7 +121,11 @@ class LiveSession:
             self.record_handle.close()
             self.record_handle = None
 
-    def process_once(self) -> dict[str, Any] | None:
+    def process_once(
+        self,
+        include_ui: bool = True,
+        include_playback: bool = True,
+    ) -> dict[str, Any] | None:
         if not self.running or self.camera is None or self.tracker is None:
             return None
         started = time.perf_counter()
@@ -139,24 +146,27 @@ class LiveSession:
         if self.recording and self.record_handle is not None:
             self.record_handle.write(json.dumps(motion.preview()) + "\n")
 
-        ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
-        if not ok:
-            self.last_error = "Could not encode a camera frame."
-            return None
-
         now = time.perf_counter()
         delta = max(now - self._previous_time, 0.001)
         self._previous_time = now
         instantaneous = 1.0 / delta
         self.fps = 0.85 * self.fps + 0.15 * instantaneous if self.fps else instantaneous
-        self.latency_ms = (now - started) * 1000.0
         self.frames_processed += 1
+        if not include_ui:
+            self.latency_ms = (now - started) * 1000.0
+            return {}
+
+        ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 88])
+        if not ok:
+            self.last_error = "Could not encode a camera frame."
+            return None
+        self.latency_ms = (time.perf_counter() - started) * 1000.0
 
         recognized = prediction["label"]
         if prediction["status"] == "stabilizing":
             recognized = f"{prediction['candidate']}..."
 
-        return {
+        payload = {
             "frame": encoded.tobytes(),
             "overlay": {
                 **motion.overlay(filtered, include_face=True),
@@ -168,7 +178,6 @@ class LiveSession:
                 ],
             },
             "motion": motion.preview(),
-            "playback": self.motion.playback_tail(90),
             "metrics": {
                 "camera": True,
                 "hands": motion.hands,
@@ -187,6 +196,9 @@ class LiveSession:
                 "recording": self.recording,
             },
         }
+        if include_playback:
+            payload["playback"] = self.motion.playback_tail(90)
+        return payload
 
     def components(self) -> dict[str, Any]:
         model_ok = self.recognizer.model is not None

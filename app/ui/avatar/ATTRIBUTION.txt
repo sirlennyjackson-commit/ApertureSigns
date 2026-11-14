@@ -1,18 +1,13 @@
-Aperture Signs generated avatar
+User-provided Aperture Signs avatar
 
-The bundled GLB was generated from the MPFB human base mesh using the MPFB
-Blender extension. The skin, clothing colors, eyes, and hair cap in this first
-version are procedural additions made for Aperture Signs; no external textures
-are included.
+The bundled GLB was rigged and exported from the user-supplied
+`Aperture_Signs_Human_Avatar _001.ccProject.fbx` with Blender 5.2.1. Automatic
+weights and localized finger corrections were used; no add-on was installed.
+The base-color and normal textures are embedded in the GLB. Some shirt and
+underarm creasing may appear in bent-arm poses.
 
-MPFB is distributed under GPL-3.0-or-later. The MakeHuman Community asset-pack
-catalog lists the MakeHuman system assets under CC0, but software and model
-asset licenses are separate. Verify the exact license of the bundled MPFB base
-mesh before redistributing the generated avatar or a public app build.
+The source asset's author and license were not provided. Verify permission to
+redistribute the model before including it in a public app build.
 
-References:
-- MPFB: https://github.com/makehumancommunity/mpfb2
-- MPFB extension license: https://extensions.blender.org/add-ons/mpfb/
-- MakeHuman Community asset-pack licenses:
-  https://static.makehumancommunity.org/assets/assetpacks/index.html
-- Three.js and GLTFLoader 0.147.0 use the MIT license; see ../vendor/THREE-LICENSE.txt.
+Three.js and GLTFLoader 0.147.0 use the MIT license; see
+`../vendor/THREE-LICENSE.txt`.

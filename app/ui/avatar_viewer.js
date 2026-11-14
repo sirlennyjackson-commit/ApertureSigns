@@ -2,16 +2,12 @@
   const VIEWERS = new WeakMap();
   const MODEL_URL = new URL("avatar/aperture_avatar.glb", document.baseURI).href;
   const BODY_SEGMENTS = [
-    ["clavicle.L", "shoulderCenter", "left_shoulder", 35],
-    ["clavicle.R", "shoulderCenter", "right_shoulder", 35],
-    ["upperarm01.L", "left_shoulder", "left_elbow", 115],
-    ["upperarm01.R", "right_shoulder", "right_elbow", 115],
-    ["lowerarm02.L", "left_elbow", "left_wrist", 125],
-    ["lowerarm02.R", "right_elbow", "right_wrist", 125],
+    ["upperarm01.L", "left_shoulder", "left_elbow", 70],
+    ["upperarm01.R", "right_shoulder", "right_elbow", 70],
+    ["lowerarm02.L", "left_elbow", "left_wrist", 85],
+    ["lowerarm02.R", "right_elbow", "right_wrist", 85],
   ];
   const MAX_NECK_ANGLE = (12 * Math.PI) / 180;
-  const POSE_SMOOTHING_SECONDS = 0.12;
-  const MAX_POSE_BLEND = 0.65;
   const DIGITS = [
     { names: ["finger1-1", "finger1-2", "finger1-3"], points: [0, 1, 2, 4] },
     { names: ["metacarpal1", "finger2-1", "finger2-2", "finger2-3"], points: [0, 5, 6, 7, 8] },
@@ -28,25 +24,69 @@
     return state.bones.get(normalizeBoneName(name));
   }
 
+  function getModelBounds(model) {
+    const bounds = new THREE.Box3().makeEmpty();
+    const vertex = new THREE.Vector3();
+    let hasSkinnedMesh = false;
+
+    model.updateMatrixWorld(true);
+    model.traverse((object) => {
+      if (!object.isSkinnedMesh) return;
+      hasSkinnedMesh = true;
+      const positions = object.geometry.attributes.position;
+      for (let index = 0; index < positions.count; index += 1) {
+        vertex.fromBufferAttribute(positions, index);
+        object.boneTransform(index, vertex);
+        vertex.applyMatrix4(object.matrixWorld);
+        bounds.expandByPoint(vertex);
+      }
+    });
+
+    if (!hasSkinnedMesh) bounds.setFromObject(model);
+    return bounds;
+  }
+
   function createViewer(canvas) {
     if (typeof THREE === "undefined" || typeof THREE.GLTFLoader !== "function") {
       throw new Error("The local Three.js viewer files did not load.");
     }
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    renderer.setClearColor(0x0b1015, 1);
+    renderer.toneMappingExposure = 1.1;
+    renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0b1015);
-    scene.add(new THREE.HemisphereLight(0xdcecff, 0x382a26, 2.1));
-    const keyLight = new THREE.DirectionalLight(0xffe4cf, 3.0);
-    keyLight.position.set(-3, 5, 5);
+    scene.add(new THREE.HemisphereLight(0xe5f0e5, 0x51483b, 2.2));
+    const keyLight = new THREE.DirectionalLight(0xffe7cf, 3.2);
+    keyLight.position.set(-3, 5, 4);
     scene.add(keyLight);
-    const fillLight = new THREE.DirectionalLight(0x9cdcff, 1.4);
+    const fillLight = new THREE.DirectionalLight(0xc3dfd1, 1.8);
     fillLight.position.set(4, 2, -3);
     scene.add(fillLight);
+
+    const shadowCanvas = document.createElement("canvas");
+    shadowCanvas.width = 128;
+    shadowCanvas.height = 128;
+    const shadowContext = shadowCanvas.getContext("2d");
+    if (!shadowContext) throw new Error("Could not create the avatar floor shadow.");
+    const shadowGradient = shadowContext.createRadialGradient(64, 64, 8, 64, 64, 64);
+    shadowGradient.addColorStop(0, "rgba(25, 30, 25, 0.34)");
+    shadowGradient.addColorStop(0.45, "rgba(25, 30, 25, 0.16)");
+    shadowGradient.addColorStop(1, "rgba(25, 30, 25, 0)");
+    shadowContext.fillStyle = shadowGradient;
+    shadowContext.fillRect(0, 0, 128, 128);
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.82, 0.5),
+      new THREE.MeshBasicMaterial({
+        map: new THREE.CanvasTexture(shadowCanvas),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = -0.006;
+    scene.add(shadow);
 
     const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 100);
     const holder = new THREE.Group();
@@ -61,7 +101,6 @@
       holder,
       lastFrame: null,
       lastAppliedFrame: null,
-      lastPoseAt: null,
       model: null,
       pointerX: null,
       renderer,
@@ -74,18 +113,20 @@
       (gltf) => {
         state.model = gltf.scene;
         holder.add(state.model);
+        state.model.updateMatrixWorld(true);
 
-        const bounds = new THREE.Box3().setFromObject(state.model);
+        const bounds = getModelBounds(state.model);
         const size = bounds.getSize(new THREE.Vector3());
         if (!Number.isFinite(size.y) || size.y <= 0) {
           throw new Error("The generated avatar has invalid dimensions.");
         }
         state.model.position.y -= bounds.min.y;
         state.model.rotation.y = 0;
+        shadow.position.y = state.model.position.y + bounds.min.y - 0.006;
         camera.position.set(0, size.y * 0.52, size.y * 2.65);
         camera.lookAt(0, size.y * 0.48, 0);
         camera.near = size.y / 100;
-        camera.far = size.y * 20;
+        camera.far = size.y * 100;
         camera.updateProjectionMatrix();
 
         state.model.traverse((object) => {
@@ -157,17 +198,21 @@
     state.renderer.render(state.scene, state.camera);
   }
 
-  function aimBone(state, name, start, end, maxAngle, blend) {
+  function avatarDirection(start, end) {
+    return new THREE.Vector3(
+      end[0] - start[0],
+      start[1] - end[1],
+      start[2] - end[2],
+    );
+  }
+
+  function aimBone(state, name, start, end, maxAngle) {
     const normalizedName = normalizeBoneName(name);
     const bone = getBone(state, name);
     const rest = state.restPose.get(normalizedName);
     if (!bone || !rest || !rest.restDirection) return;
 
-    const direction = new THREE.Vector3(
-      end[0] - start[0],
-      -(end[1] - start[1]),
-      end[2] - start[2],
-    );
+    const direction = avatarDirection(start, end);
     if (direction.lengthSq() < 1e-8) return;
     direction.normalize();
 
@@ -181,7 +226,7 @@
       ? bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert()
       : new THREE.Quaternion();
     const targetQuaternion = parentQuaternion.multiply(worldQuaternion);
-    bone.quaternion.slerp(targetQuaternion, blend);
+    bone.quaternion.copy(targetQuaternion);
   }
 
   function midpoint(first, second) {
@@ -193,24 +238,39 @@
     ];
   }
 
+  function resetPose(state) {
+    state.lastFrame = null;
+    state.lastAppliedFrame = null;
+    if (!state.model) return;
+    for (const [name, rest] of state.restPose) {
+      const bone = getBone(state, name);
+      if (bone) bone.quaternion.copy(rest.localQuaternion);
+    }
+    state.model.updateMatrixWorld(true);
+    render(state);
+  }
+
   function applyFrame(state, frame) {
-    state.lastFrame = frame;
-    if (!state.model || !frame) return;
+    if (!state.model) {
+      state.lastFrame = frame;
+      return;
+    }
+    if (!frame) {
+      resetPose(state);
+      return;
+    }
     if (frame === state.lastAppliedFrame) {
       render(state);
       return;
     }
 
-    const now = performance.now();
-    const elapsed = state.lastPoseAt === null ? POSE_SMOOTHING_SECONDS : (now - state.lastPoseAt) / 1000;
-    const blend = Math.min(MAX_POSE_BLEND, 1 - Math.exp(-elapsed / POSE_SMOOTHING_SECONDS));
-    state.lastAppliedFrame = frame;
-    state.lastPoseAt = now;
     for (const [name, rest] of state.restPose) {
       const bone = getBone(state, name);
-      if (bone) bone.quaternion.slerp(rest.localQuaternion, blend);
+      if (bone) bone.quaternion.copy(rest.localQuaternion);
     }
     state.model.updateMatrixWorld(true);
+    state.lastFrame = frame;
+    state.lastAppliedFrame = frame;
 
     const joints = frame.joints || {};
     const leftHip = joints.left_hip;
@@ -226,7 +286,7 @@
       const start = points[startName];
       const end = points[endName];
       if (!start || !end) continue;
-      aimBone(state, name, start, end, THREE.MathUtils.degToRad(maxAngleDegrees), blend);
+      aimBone(state, name, start, end, THREE.MathUtils.degToRad(maxAngleDegrees));
       state.model.updateMatrixWorld(true);
     }
 
@@ -239,7 +299,7 @@
       Number.isFinite(nose[1]) &&
       nose[1] < shoulderCenter[1]
     ) {
-      aimBone(state, "neck01", shoulderCenter, nose, MAX_NECK_ANGLE, blend);
+      aimBone(state, "neck01", shoulderCenter, nose, MAX_NECK_ANGLE);
       state.model.updateMatrixWorld(true);
     }
 
@@ -250,7 +310,7 @@
           const start = hand[digit.points[index]];
           const end = hand[digit.points[index + 1]];
           if (start && end) {
-            aimBone(state, `${digit.names[index]}.${side}`, start, end, Math.PI * 0.8, blend);
+            aimBone(state, `${digit.names[index]}.${side}`, start, end, Math.PI * 0.8);
             state.model.updateMatrixWorld(true);
           }
         }
@@ -276,6 +336,10 @@
         if (status) status.textContent = "3D avatar viewer unavailable: " + error.message;
         return false;
       }
+    },
+    reset(canvas) {
+      const state = VIEWERS.get(canvas);
+      if (state) resetPose(state);
     },
     resize() {
       document.querySelectorAll("#avatarCanvas, #signingAvatarCanvas").forEach((canvas) => {

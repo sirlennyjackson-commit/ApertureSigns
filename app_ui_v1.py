@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 import base64
+import math
 import subprocess
 import time
 from pathlib import Path
@@ -52,23 +53,29 @@ class CaptureWorker(QThread):
                 self.camera_error.emit(error)
                 return
             while not self.isInterruptionRequested() and self.session.running:
-                payload = self.session.process_once()
+                include_ui = time.perf_counter() - last_ui_update >= 0.05
+                payload = self.session.process_once(
+                    include_ui=include_ui,
+                    include_playback=False,
+                )
                 if payload is None:
                     if self.session.last_error:
                         self.camera_error.emit(self.session.last_error)
                     break
+                if not include_ui:
+                    self.msleep(5)
+                    continue
                 now = time.perf_counter()
-                if now - last_ui_update >= 0.05:
-                    frame = payload["frame"]
-                    frame_b64 = base64.b64encode(frame).decode("ascii") if frame is not None else ""
-                    self.frame_ready.emit(
-                        frame_b64,
-                        payload["overlay"],
-                        payload["motion"],
-                        payload["metrics"],
-                        self.session.components(),
-                    )
-                    last_ui_update = now
+                frame = payload["frame"]
+                frame_b64 = base64.b64encode(frame).decode("ascii") if frame is not None else ""
+                self.frame_ready.emit(
+                    frame_b64,
+                    payload["overlay"],
+                    payload["motion"],
+                    payload["metrics"],
+                    self.session.components(),
+                )
+                last_ui_update = now
                 self.msleep(5)
         except Exception as exc:
             self.session.last_error = f"Capture failed: {exc}"
@@ -180,17 +187,49 @@ class PlatformApi(QObject):
 
     @pyqtSlot(str)
     def applySettings(self, payload: str):
-        data = json.loads(payload)
-        cfg = self.window.session.config
-        cfg.camera_index = int(data.get("camera_index", cfg.camera_index))
-        cfg.language = str(data.get("language", cfg.language))
-        cfg.min_cutoff = float(data.get("min_cutoff", cfg.min_cutoff))
-        cfg.beta = float(data.get("beta", cfg.beta))
-        cfg.blender_host = str(data.get("blender_host", cfg.blender_host))
-        cfg.blender_port = int(data.get("blender_port", cfg.blender_port))
-        cfg.avatar_blend_path = str(data.get("avatar_blend_path", cfg.avatar_blend_path))
-        self.window.session.motion.configure_smoothing(cfg.min_cutoff, cfg.beta)
-        self.window.session.blender.configure(cfg.blender_host, cfg.blender_port)
+        config = self.window.session.config
+        try:
+            data = json.loads(payload)
+            if not isinstance(data, dict):
+                raise ValueError("Settings must be a JSON object.")
+
+            camera_value = float(data.get("camera_index", config.camera_index))
+            cutoff = float(data.get("min_cutoff", config.min_cutoff))
+            beta = float(data.get("beta", config.beta))
+            port_value = float(data.get("blender_port", config.blender_port))
+            language = data.get("language", config.language)
+            host = data.get("blender_host", config.blender_host)
+
+            if (
+                not math.isfinite(camera_value)
+                or not camera_value.is_integer()
+                or not 0 <= camera_value <= 2147483647
+            ):
+                raise ValueError("Camera index must be a whole number from 0 to 2147483647.")
+            if not math.isfinite(cutoff) or cutoff <= 0:
+                raise ValueError("One Euro min cutoff must be greater than zero.")
+            if not math.isfinite(beta) or beta < 0:
+                raise ValueError("One Euro beta must be zero or greater.")
+            if not math.isfinite(port_value) or not port_value.is_integer() or not 1 <= port_value <= 65535:
+                raise ValueError("Blender UDP port must be a whole number from 1 to 65535.")
+            if not isinstance(language, str) or not language.strip():
+                raise ValueError("Select a sign language target.")
+            if not isinstance(host, str) or not host.strip():
+                raise ValueError("Blender host cannot be empty.")
+        except (OverflowError, TypeError, ValueError) as exc:
+            self.window.set_settings_status(f"Settings not applied: {exc}", "error")
+            return
+
+        camera_index = int(camera_value)
+        camera_changed = camera_index != config.camera_index
+        self.window.session.set_camera_index(camera_index)
+        self.window.session.set_language(language)
+        self.window.session.set_smoothing(self.window.session.motion.enabled, cutoff, beta)
+        self.window.session.configure_blender(host.strip(), int(port_value))
+        message = "Settings applied."
+        if camera_changed and self.window.session.running:
+            message += " Stop and restart capture to switch cameras."
+        self.window.set_settings_status(message, "success")
         self.window.push_components()
 
     @pyqtSlot(str)
@@ -233,6 +272,15 @@ class MainWindow(QMainWindow):
 
     def run_js(self, script: str):
         self.browser.page().runJavaScript(script)
+
+    def set_settings_status(self, message: str, state: str):
+        self.run_js(
+            "window.setSettingsStatus("
+            + json.dumps(message)
+            + ", "
+            + json.dumps(state)
+            + ");"
+        )
 
     def start_ui(self, loaded: bool):
         if not loaded:

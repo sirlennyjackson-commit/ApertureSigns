@@ -7,7 +7,26 @@ from backend.motion.filter import OneEuroFilter
 from backend.motion.models import MotionFrame
 from backend.motion.pipeline import MotionPipeline
 from backend.runtime.session import LiveSession
-from app_ui_v1 import CaptureWorker
+from app_ui_v1 import CaptureWorker, PlatformApi
+from PyQt6.QtCore import QObject
+
+
+class StubRecognizer:
+    model = None
+    model_error = None
+
+    def __init__(self, **_kwargs):
+        pass
+
+    def analyze(self, _history):
+        return {
+            "prediction": {
+                "label": "UNKNOWN",
+                "candidate": None,
+                "confidence": 0.0,
+                "status": "idle",
+            }
+        }
 
 
 def test_one_euro_filter_tracks_a_step():
@@ -65,11 +84,13 @@ def test_capture_worker_emits_frame_and_cleans_up():
         running = True
         last_error = None
         stopped = False
+        processed_options = []
 
         def start_camera(self):
             return None
 
-        def process_once(self):
+        def process_once(self, include_ui=True, include_playback=True):
+            self.processed_options.append((include_ui, include_playback))
             self.running = False
             return {"frame": b"frame", "overlay": {}, "motion": {}, "metrics": {}}
 
@@ -91,6 +112,7 @@ def test_capture_worker_emits_frame_and_cleans_up():
     assert len(frames) == 1
     assert errors == []
     assert session.stopped is True
+    assert session.processed_options == [(True, False)]
 
 
 def test_session_frames_include_face_and_lip_contours():
@@ -128,6 +150,85 @@ def test_session_frames_include_face_and_lip_contours():
     assert payload["overlay"]["face_connections"] == [[1, 2], [2, 3]]
     assert payload["overlay"]["lip_connections"] == [[4, 5], [5, 6]]
     session.stop_camera()
+
+
+def test_session_skips_ui_encoding_when_no_display_update_is_due(monkeypatch):
+    class Camera:
+        def read(self):
+            return True, np.zeros((8, 8, 3), dtype=np.uint8)
+
+        def release(self):
+            pass
+
+    class Tracker:
+        history = []
+
+        def process(self, _frame):
+            return {"pose": [], "left_hand": [], "right_hand": [], "face": []}, None
+
+    monkeypatch.setattr("backend.runtime.session.SignRecognizer", StubRecognizer)
+    session = LiveSession()
+    session.running = True
+    session.camera = Camera()
+    session.tracker = Tracker()
+
+    def unexpected_encode(*_args, **_kwargs):
+        raise AssertionError("Skipped UI frames must not be JPEG-encoded.")
+
+    monkeypatch.setattr("backend.runtime.session.cv2.imencode", unexpected_encode)
+
+    assert session.process_once(include_ui=False, include_playback=False) == {}
+    assert session.frames_processed == 1
+    assert session.motion.sequence == 1
+    session.stop_camera()
+
+
+def test_settings_validation_is_atomic_and_reports_camera_restart(monkeypatch):
+    class Window(QObject):
+        def __init__(self):
+            super().__init__()
+            self.session = LiveSession()
+            self.settings_status = []
+
+        def set_settings_status(self, message, state):
+            self.settings_status.append((message, state))
+
+        def push_components(self):
+            pass
+
+    monkeypatch.setattr("backend.runtime.session.SignRecognizer", StubRecognizer)
+    window = Window()
+    window.session.running = True
+    api = PlatformApi(window)
+    original_config = window.session.config
+    api.applySettings(
+        '{"camera_index":1,"language":"KSL","min_cutoff":1.5,"beta":0.1,'
+        '"blender_host":"127.0.0.1","blender_port":5005}'
+    )
+
+    assert original_config.camera_index == 1
+    assert original_config.min_cutoff == 1.5
+    assert window.settings_status[-1][1] == "success"
+    assert "restart capture" in window.settings_status[-1][0]
+
+    api.applySettings(
+        '{"camera_index":2,"language":"KSL","min_cutoff":0,"beta":0.1,'
+        '"blender_host":"127.0.0.1","blender_port":5005}'
+    )
+
+    assert original_config.camera_index == 1
+    assert original_config.min_cutoff == 1.5
+    assert window.settings_status[-1][1] == "error"
+
+    api.applySettings(
+        '{"camera_index":1.5,"language":"KSL","min_cutoff":1.2,"beta":0.1,'
+        '"blender_host":"127.0.0.1","blender_port":5005}'
+    )
+
+    assert original_config.camera_index == 1
+    assert original_config.min_cutoff == 1.5
+    assert window.settings_status[-1][1] == "error"
+    window.session.blender.close()
 
 
 def test_motion_frame_blender_payload_includes_source():

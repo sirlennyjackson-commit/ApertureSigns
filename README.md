@@ -44,11 +44,25 @@ The UI opens without MediaPipe or a classifier model when Qt is installed, and r
 .\.venv\Scripts\python.exe backend\vision\hand_tracker.py
 ```
 
+For a minimal live camera or stream preview with a hook for custom offline interpretation, run:
+
+```powershell
+.\.venv\Scripts\python.exe -m backend.vision.camera_input
+```
+
+Select another camera with `--camera 1`, or provide a camera stream URL with `--camera "URL"`. Use `--width` and `--height` to request a different frame size. Press `q` in the preview window to release the camera and exit. MediaPipe returns face, pose, and left/right hand landmarks; add model inference in `interpret_landmarks` in `backend\vision\camera_input.py`.
+
 The Aurora Translate screen connects both interaction directions. Live Capture's stabilized single-word predictions appear in its sign transcript and are spoken through the desktop WebEngine system voice; speech can be muted in Aurora. Typed English and Windows SAPI voice input can look up recorded vocabulary words and play their landmark sequences in the avatar. Open “Browse recorded words” to see and select the supported vocabulary. Voice input uses Windows dictation; typing remains available as a fallback.
 
-Avatar Studio and Aurora Translate include the same full-body, low-poly 2D signing avatar. It follows live body landmarks and recorded hand landmarks during sign playback. The optional Blender bridge remains available for streaming to an external rig.
+## External demo walkthrough
 
-Speech-to-sign currently performs exact word lookup against the checked-in KSL landmark dataset. It is not English-to-KSL grammar translation, unmapped words are not fabricated, and avatar playback is a landmark visualization rather than a production signing character. Sign recognition remains experimental and should not be relied on for consequential communication.
+For a repeatable demonstration that does not depend on camera access, open **Aurora Translate**, enter `me have`, and select **Translate & sign**. The avatar plays the recorded samples for both words; the supported-word browser can also trigger a word on its own. This demonstrates recorded vocabulary lookup and avatar playback, not live translation or sentence-level KSL grammar. To show live tracking separately, start capture and demonstrate the camera landmarks, clearly labeling sign recognition as experimental.
+
+The capture pipeline processes each camera frame while refreshing the on-screen preview at up to 20 Hz, avoiding JPEG work for frames the UI cannot display. Settings drafts are preserved while live metrics refresh. A changed camera index takes effect after stopping and restarting capture.
+
+Avatar Studio and Aurora Translate include the same full-body, textured, rigged 3D avatar. It follows live arm/body landmarks and recorded hand movement during playback. The rig uses automatic weights with localized finger corrections; some shirt and underarm creasing may appear in bent-arm poses. The live signing workflow has not yet been verified end to end. The optional Blender bridge remains available for streaming frames to a compatible external rig.
+
+Speech-to-sign currently performs exact word lookup against the checked-in KSL landmark dataset. It is not English-to-KSL grammar translation, unmapped words are not fabricated, and the avatar's recorded-sign animation is experimental. Sign recognition remains experimental and should not be relied on for consequential communication.
 
 ## Run the API
 
